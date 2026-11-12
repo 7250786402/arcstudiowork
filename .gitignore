@@ -1,0 +1,17 @@
+# dependencies and build output
+node_modules/
+dist/
+contracts/out/
+contracts/cache/
+
+# secrets: never commit
+.env
+.env.*
+!.env.example
+.circle/
+recovery_file*
+
+# local logs
+*.log
+console.jsonl
+traces.jsonl
