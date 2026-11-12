@@ -9,24 +9,15 @@ import { CHAIN_ID, ESCROW_ADDRESS, STATUS, ZERO, usd } from '@/escrowTypes'
 import type { Addr, Deal } from '@/escrowTypes'
 import { c, glass } from './theme'
 import { useTxFlow } from './useTxFlow'
+import { Button } from '@/ui/Button'
+import { AddressTag } from '@/ui/AddressAvatar'
 
 type IdFn =
   | 'release' | 'refund' | 'cancelUnaccepted' | 'reclaimExpired' | 'claimAfterReviewWindow'
   | 'raiseDispute' | 'refundStaleDispute' | 'markDelivered' | 'withdrawSeller'
 
 function Btn({ children, onClick, disabled, tone = 'primary' }: { children: ReactNode; onClick: () => void; disabled: boolean; tone?: 'primary' | 'success' | 'ghost' | 'danger' }) {
-  const style =
-    tone === 'primary' ? { background: c.accent, color: '#fff' }
-    : tone === 'success' ? { background: c.success, color: '#fff' }
-    : tone === 'danger' ? { color: c.danger, background: 'rgba(192,57,43,0.08)' }
-    : { color: c.ink, ...glass.inner }
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className="min-h-11 w-full rounded-2xl px-4 text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
-      style={style}>
-      {children}
-    </button>
-  )
+  return <Button block variant={tone} onClick={onClick} disabled={disabled}>{children}</Button>
 }
 
 function Note({ children }: { children: ReactNode }) {
@@ -36,6 +27,7 @@ function Note({ children }: { children: ReactNode }) {
 export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Addr; now: number; onChanged: () => void }) {
   const tx = useTxFlow(onChanged)
   const [payout, setPayout] = useState('')
+  const [confirm, setConfirm] = useState<'release' | 'refund' | null>(null)
   const [sellerShare, setSellerShare] = useState('')
 
   const meL = me?.toLowerCase()
@@ -103,11 +95,11 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
   if (s === STATUS.Accepted) {
     if (isSeller) {
       if (!pastDeadline) items.push(<Btn key="d" tone="success" disabled={busy} onClick={() => idCall('markDelivered')}>{label('I have delivered')}</Btn>)
-      items.push(<Btn key="r" tone="ghost" disabled={busy} onClick={() => idCall('refund')}>{label('Return USDC to buyer')}</Btn>)
+      items.push(<Btn key="r" tone="ghost" disabled={busy} onClick={() => setConfirm('refund')}>{label('Return USDC to buyer')}</Btn>)
     }
     if (isBuyer) {
       items.push(<Note key="n">Release only when you are happy with the work.</Note>)
-      items.push(<Btn key="rel" tone="success" disabled={busy} onClick={() => idCall('release')}>{label(`Release ${usd(deal.amount)} USDC to seller`)}</Btn>)
+      items.push(<Btn key="rel" tone="success" disabled={busy} onClick={() => setConfirm('release')}>{label(`Release ${usd(deal.amount)} USDC to seller`)}</Btn>)
       if (pastDeadline) items.push(<Btn key="x" tone="danger" disabled={busy} onClick={() => idCall('reclaimExpired')}>{label('Deadline passed: get USDC back')}</Btn>)
     }
   }
@@ -116,12 +108,12 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
     const canDispute = hasArbiter && (isSeller || (isBuyer && (windowS === 0 || now <= reviewEnds)))
     if (isBuyer) {
       items.push(<Note key="n">The seller says the work is delivered.{windowS > 0 ? ` Respond before it auto-releases on ${new Date(reviewEnds * 1000).toLocaleString()}.` : ''}</Note>)
-      items.push(<Btn key="rel" tone="success" disabled={busy} onClick={() => idCall('release')}>{label(`Release ${usd(deal.amount)} USDC to seller`)}</Btn>)
+      items.push(<Btn key="rel" tone="success" disabled={busy} onClick={() => setConfirm('release')}>{label(`Release ${usd(deal.amount)} USDC to seller`)}</Btn>)
     }
     if (isSeller) {
       if (windowS > 0 && now > reviewEnds) items.push(<Btn key="cl" tone="success" disabled={busy} onClick={() => idCall('claimAfterReviewWindow')}>{label('Review time is over: collect payment')}</Btn>)
       else items.push(<Note key="n">{windowS > 0 ? `You can collect automatically after ${new Date(reviewEnds * 1000).toLocaleString()} if the buyer stays silent.` : 'Waiting for the buyer to release.'}</Note>)
-      items.push(<Btn key="rf" tone="ghost" disabled={busy} onClick={() => idCall('refund')}>{label('Return USDC to buyer')}</Btn>)
+      items.push(<Btn key="rf" tone="ghost" disabled={busy} onClick={() => setConfirm('refund')}>{label('Return USDC to buyer')}</Btn>)
     }
     if (canDispute) items.push(<Btn key="dis" tone="danger" disabled={busy} onClick={() => idCall('raiseDispute')}>{label('Raise a dispute with the arbiter')}</Btn>)
   }
@@ -164,13 +156,29 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
   }
 
   if (s === STATUS.Refunded) items.push(<Note key="rf">The USDC was returned to the buyer.</Note>)
+  if (confirm) {
+    const toSeller = confirm === 'release'
+    const recipient = toSeller ? (deal.sellerPayout !== ZERO ? deal.sellerPayout : deal.seller) : deal.buyer
+    return (
+      <div className="space-y-2.5">
+        <div className="rounded-2xl p-3" style={glass.inner}>
+          <p className="text-sm font-semibold" style={{ color: c.ink }}>{toSeller ? 'Release the payment?' : 'Return the USDC to the buyer?'}</p>
+          <p className="mt-1 text-xs text-pretty" style={{ color: c.muted }}>
+            {usd(deal.amount)} USDC will go to <AddressTag address={recipient} size={14} />. This cannot be undone.
+          </p>
+        </div>
+        <Btn tone={toSeller ? 'success' : 'danger'} disabled={busy} onClick={() => { setConfirm(null); idCall(confirm) }}>{label(toSeller ? 'Yes, release it' : 'Yes, return it')}</Btn>
+        <Btn tone="ghost" disabled={busy} onClick={() => setConfirm(null)}>Not yet</Btn>
+      </div>
+    )
+  }
   if (items.length === 0) return null
 
   return (
     <div className="space-y-2.5">
       {items}
       {tx.busy && <p className="flex items-center gap-2 text-xs" style={{ color: c.muted }}><Loader2 className="size-3.5 animate-spin" />{tx.pending ? 'Waiting for your wallet' : 'Waiting for network confirmation'}</p>}
-      {tx.error && <p className="rounded-xl px-3 py-2 text-xs" style={{ color: c.danger, background: 'rgba(192,57,43,0.08)' }}>{tx.error}</p>}
+      {tx.error && <p className="rounded-xl px-3 py-2 text-xs" style={{ color: c.danger, background: 'rgba(240,128,140,0.08)' }}>{tx.error}</p>}
     </div>
   )
 }

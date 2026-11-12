@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAccount } from 'wagmi'
 import { isAddress } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { Loader2 } from 'lucide-react'
 import { parseAmount } from '@/onchain-money'
 import { CHAIN_ID, USDC_ADDRESS, ZERO, usd } from '@/escrowTypes'
 import { CROWDFUND_ABI } from '@/crowdfundAbi'
 import { c, display, glass } from '@/escrow/theme'
 import { useTxFlow } from '@/escrow/useTxFlow'
+import { Button } from '@/ui/Button'
 import { CROWDFUND_ADDRESS } from './crowdfundTypes'
+import { ActionNote, Strong } from '@/ui/ActionNote'
+import { AddressTag } from '@/ui/AddressAvatar'
+import { addPending } from '@/lib/pending'
 
 const GOALS = ['50', '100', '500', '1000']
 const DURATIONS: ReadonlyArray<readonly [string, number]> = [
@@ -50,6 +53,9 @@ export function StartCampaignForm({ onCreated }: { onCreated: () => void }) {
   const ready = isConnected && titleOk && descOk && goalRaw !== null && payToOk
 
   const create = useTxFlow(onCreated)
+  useEffect(() => {
+    if (create.hash) addPending({ hash: create.hash, app: 'crowdfund', label: `Starting "${title.trim() || 'new campaign'}"` })
+  }, [create.hash, title])
   const submit = () => {
     if (!ready || goalRaw === null || !isAddress(payTo)) return
     void create.run((w) => w({
@@ -77,8 +83,8 @@ export function StartCampaignForm({ onCreated }: { onCreated: () => void }) {
       <Field label="Goal (USDC)" hint={goalRaw ? `You need ${usd(goalRaw)} USDC for the campaign to succeed.` : 'Enter an amount above 0.'}>
         <div className="flex flex-wrap gap-1.5">
           {GOALS.map((g) => (
-            <button key={g} type="button" onClick={() => setGoal(g)} className="min-h-10 rounded-xl px-3 text-sm font-semibold tabular-nums"
-              style={goal === g ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>{g}</button>
+            <button key={g} type="button" onClick={() => setGoal(g)} className="btn min-h-11 rounded-xl px-3 text-sm font-semibold tabular-nums"
+              style={goal === g ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{g}</button>
           ))}
         </div>
         <input value={goal} onChange={(e) => setGoal(e.target.value)} inputMode="decimal" className={`${input} tabular-nums`} style={{ ...glass.inner, color: c.ink }} />
@@ -96,11 +102,17 @@ export function StartCampaignForm({ onCreated }: { onCreated: () => void }) {
 
       {create.error && <p role="alert" className="text-xs" style={{ color: c.danger }}>{create.error}</p>}
 
+      {isConnected && (
+        <ActionNote
+          summary={<>start a campaign for <Strong>{goal || '0'} USDC</Strong> lasting {duration >= 86400 ? `${Math.round(duration / 86400)} days` : `${Math.round(duration / 3600)} hour`}. If the goal is reached, the money goes to {payToOk ? <AddressTag address={payTo} size={14} /> : 'the wallet you enter'}. If not, every backer can take their USDC back.</>}
+          missing={[!titleOk && 'a title (up to 100 characters)', !descOk && 'a short story', goalRaw === null && 'a goal above 0', !payToOk && 'a valid payout wallet'].filter((m): m is string => typeof m === 'string')}
+        />
+      )}
+
       {!isConnected ? <div className="flex justify-center"><ConnectKitButton /></div> : (
-        <button onClick={submit} disabled={!ready || create.busy} className="flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-semibold text-white disabled:opacity-50" style={{ background: c.accent }}>
-          {create.busy && <Loader2 className="size-4 animate-spin" />}
+        <Button block className="min-h-12" onClick={submit} disabled={!ready} loading={create.pending || create.confirming}>
           {create.pending ? 'Confirm in wallet' : create.confirming ? 'Creating on Arc Testnet' : 'Start campaign'}
-        </button>
+        </Button>
       )}
     </section>
   )

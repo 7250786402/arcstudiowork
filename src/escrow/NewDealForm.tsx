@@ -1,15 +1,19 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAccount, useReadContract } from 'wagmi'
 import { erc20Abi, isAddress } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { parseAmount } from '@/onchain-money'
 import { ESCROW_ABI } from '@/escrowAbi'
 import { CHAIN_ID, DAY, ESCROW_ADDRESS, USDC_ADDRESS, ZERO, usd } from '@/escrowTypes'
 import type { Addr } from '@/escrowTypes'
 import { c, display, glass } from './theme'
 import { useTxFlow } from './useTxFlow'
+import { Button } from '@/ui/Button'
+import { ActionNote, Strong } from '@/ui/ActionNote'
+import { AddressTag } from '@/ui/AddressAvatar'
+import { addPending } from '@/lib/pending'
 
 const DEADLINES = [
   { label: '1 day', days: 1 },
@@ -40,8 +44,8 @@ function Chips<T extends number>({ items, value, onPick }: { items: { label: str
     <div className="flex flex-wrap gap-1.5">
       {items.map((i) => (
         <button key={i.label} type="button" onClick={() => onPick(i.days)}
-          className="min-h-9 rounded-xl px-3 text-xs font-semibold transition-colors"
-          style={value === i.days ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>
+          className="min-h-11 rounded-xl px-3 text-xs font-semibold transition-colors"
+          style={value === i.days ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>
           {i.label}
         </button>
       ))}
@@ -73,8 +77,11 @@ export function NewDealForm({ onCreated }: { onCreated: () => void }) {
   })
 
   const onApproved = useCallback(() => { void refetchAllowance() }, [refetchAllowance])
-  const approve = useTxFlow(onApproved)
+  const approve = useTxFlow(onApproved, { celebrate: false })
   const create = useTxFlow(onCreated)
+  useEffect(() => {
+    if (create.hash) addPending({ hash: create.hash, app: 'escrow', label: `Funding "${title.trim() || 'new deal'}"` })
+  }, [create.hash, title])
 
   const sellerOk = isAddress(seller) && seller.toLowerCase() !== address?.toLowerCase()
   const arbiterSet = arbiter.trim() !== ''
@@ -114,7 +121,7 @@ export function NewDealForm({ onCreated }: { onCreated: () => void }) {
         <div className="mt-3 flex items-center justify-between text-xs" style={{ color: c.muted }}>
           <div className="flex gap-1.5">
             {[10, 25, 50, 100].map((v) => (
-              <button key={v} type="button" onClick={() => setAmount(String(v))} className="min-h-9 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
+              <button key={v} type="button" onClick={() => setAmount(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
             ))}
           </div>
           <span className="tabular-nums">{balance !== undefined ? `Balance ${usd(balance)}` : ''}</span>
@@ -151,30 +158,29 @@ export function NewDealForm({ onCreated }: { onCreated: () => void }) {
         {!safeguardOk && <p className="mt-3 text-xs font-medium" style={{ color: c.warn }}>Add an arbiter or an auto-release time to continue.</p>}
       </div>
 
-      {err && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(192,57,43,0.08)' }}>{err}</p>}
+      {err && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(240,128,140,0.08)' }}>{err}</p>}
       {amountRaw !== null && balance !== undefined && !enough && (
         <p className="text-xs font-medium" style={{ color: c.danger }}>Your balance is lower than this amount. Use Get test USDC in the sidebar.</p>
+      )}
+
+      {isConnected && (
+        <ActionNote
+          summary={<>lock <Strong>{amount || '0'} USDC</Strong> in escrow for {sellerOk ? <AddressTag address={seller} size={14} /> : 'the seller you enter'}. It stays in the contract until you release it, the seller returns it{arbiterSet ? ', or the arbiter decides' : ''}{windowDays > 0 ? `, or it auto-releases ${windowDays} days after delivery` : ''}. Delivery is due within {days} days.</>}
+          missing={[!sellerOk && 'a valid seller wallet', (amountRaw === null || amountRaw === 0n) && 'an amount', title.trim() === '' && 'a title', terms.trim() === '' && 'the terms', !safeguardOk && 'an arbiter or an auto-release time', arbiterSet && !arbiterOk && 'a valid arbiter wallet', amountRaw !== null && balance !== undefined && !enough && 'enough USDC'].filter((m): m is string => typeof m === 'string')}
+        />
       )}
 
       {!isConnected ? (
         <div className="flex justify-center"><ConnectKitButton /></div>
       ) : needsApproval ? (
-        <button disabled={!formOk || !enough || approve.busy} onClick={doApprove}
-          className="min-h-12 w-full rounded-2xl text-sm font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ background: c.accent }}>
-          {approve.pending ? <Spin>Confirm in wallet...</Spin> : approve.confirming ? <Spin>Allowing USDC...</Spin> : 'Step 1 of 2: Allow USDC'}
-        </button>
+        <Button block className="min-h-12" disabled={!formOk || !enough} loading={approve.pending || approve.confirming} onClick={doApprove}>
+          {approve.pending ? 'Confirm in wallet...' : approve.confirming ? 'Allowing USDC...' : 'Step 1 of 2: Allow USDC'}
+        </Button>
       ) : (
-        <button disabled={!formOk || !enough || create.busy} onClick={doCreate}
-          className="min-h-12 w-full rounded-2xl text-sm font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
-          style={{ background: c.success }}>
-          {create.pending ? <Spin>Confirm in wallet...</Spin> : create.confirming ? <Spin>Funding escrow...</Spin> : `Step 2 of 2: Lock ${amount || '0'} USDC in escrow`}
-        </button>
+        <Button block variant="success" className="min-h-12" disabled={!formOk || !enough} loading={create.pending || create.confirming} onClick={doCreate}>
+          {create.pending ? 'Confirm in wallet...' : create.confirming ? 'Funding escrow...' : `Step 2 of 2: Lock ${amount || '0'} USDC in escrow`}
+        </Button>
       )}
     </section>
   )
-}
-
-function Spin({ children }: { children: ReactNode }) {
-  return <span className="flex items-center justify-center gap-2"><Loader2 className="size-4 animate-spin" />{children}</span>
 }

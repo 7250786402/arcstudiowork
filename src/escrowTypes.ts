@@ -59,10 +59,17 @@ export function fmtDate(ts: bigint) {
 }
 
 export function parseErr(e: unknown): string {
-  const msg = ((e as { message?: string })?.message ?? '').toLowerCase()
-  if (msg.includes('user rejected') || msg.includes('denied')) return 'Cancelled in wallet.'
-  if (msg.includes('insufficient') || msg.includes('exceeds balance')) return 'Not enough USDC.'
-  if (msg.includes('deadline passed')) return 'The delivery deadline has passed.'
-  if (msg.includes('reverted')) return 'The contract rejected this step. Refresh and check the deal status.'
-  return 'Something went wrong. Please try again.'
+  const err = e as { shortMessage?: string; message?: string }
+  const msg = `${err?.shortMessage ?? ''} ${err?.message ?? ''}`
+  const low = msg.toLowerCase()
+  if (low.includes('user rejected') || low.includes('user denied') || low.includes('denied transaction')) return 'You cancelled this in your wallet. Nothing was sent.'
+  if (low.includes('insufficient funds') || low.includes('exceeds balance') || low.includes('transfer amount exceeds')) {
+    return 'Not enough USDC for this amount plus network fees. Get test USDC from the sidebar and try again.'
+  }
+  const reason = /reverted with the following reason:\s*([^\n]+)/i.exec(msg)?.[1] ?? /reason string '([^']+)'/i.exec(msg)?.[1]
+  if (reason) return `The contract said: "${reason.trim()}". Refresh and check the status before trying again.`
+  if (low.includes('chain') && low.includes('mismatch')) return 'Your wallet is on a different network. Switch to Arc Testnet and try again.'
+  if (low.includes('reverted')) return 'The contract rejected this step. Refresh and check the status before trying again.'
+  if (low.includes('network') || low.includes('timeout') || low.includes('failed to fetch')) return 'Could not reach the network. Check your connection and try again.'
+  return 'Something went wrong. Check your wallet and try again.'
 }

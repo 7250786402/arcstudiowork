@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Check, ChevronDown, Copy, ExternalLink, Share2 } from 'lucide-react'
 import { buildAddressExplorerUrl } from '@/onchain-facts'
-import { CHAIN_ID, STATUS, STATUS_LABEL, ZERO, fmtDate, short, usd } from '@/escrowTypes'
+import { CHAIN_ID, STATUS, STATUS_LABEL, ZERO, fmtDate, usd } from '@/escrowTypes'
 import type { Addr, Deal } from '@/escrowTypes'
 import { buildShareLink } from '@/lib/share'
 import { c, display, glass } from './theme'
+import { AddressTag } from '@/ui/AddressAvatar'
 import { DealActions } from './DealActions'
 import { DealTimeline } from './DealTimeline'
+import { StatusIcon } from '@/ui/StatusIcon'
 
 const STEPS = ['Funded', 'Accepted', 'Delivered', 'Paid']
 
@@ -28,10 +30,10 @@ function stepIndex(status: number) {
 }
 
 function tone(status: number) {
-  if (status === STATUS.Released || status === STATUS.Resolved) return { bg: 'rgba(26,128,71,0.12)', fg: c.success }
-  if (status === STATUS.Disputed) return { bg: 'rgba(192,57,43,0.1)', fg: c.danger }
+  if (status === STATUS.Released || status === STATUS.Resolved) return { bg: 'rgba(141,216,159,0.12)', fg: c.success }
+  if (status === STATUS.Disputed) return { bg: 'rgba(240,128,140,0.1)', fg: c.danger }
   if (status === STATUS.Refunded) return { bg: 'rgba(92,107,124,0.12)', fg: c.muted }
-  return { bg: 'rgba(18,45,69,0.08)', fg: c.accent }
+  return { bg: 'rgba(255,255,255,0.08)', fg: c.accent }
 }
 
 function Party({ label, addr, me }: { label: string; addr: Addr; me?: Addr }) {
@@ -40,7 +42,7 @@ function Party({ label, addr, me }: { label: string; addr: Addr; me?: Addr }) {
     <div className="flex items-center justify-between text-xs">
       <span style={{ color: c.muted }}>{label}</span>
       <a href={buildAddressExplorerUrl(CHAIN_ID, addr)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 font-medium tabular-nums" style={{ color: c.ink }}>
-        {short(addr)}{me?.toLowerCase() === addr.toLowerCase() ? ' (you)' : ''}<ExternalLink className="size-3" style={{ color: c.subtle }} />
+        <AddressTag address={addr} you={me?.toLowerCase() === addr.toLowerCase()} /><ExternalLink className="size-3" style={{ color: c.subtle }} />
       </a>
     </div>
   )
@@ -102,7 +104,7 @@ export function DealCard({ deal, me, onChanged, defaultOpen = false, index = 0 }
             <p className="mt-0.5 text-xs" style={{ color: c.muted }}>{role ? `You are the ${role.toLowerCase()}` : 'Deal'} · #{deal.id.toString()}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: t.bg, color: t.fg }}>{STATUS_LABEL[deal.status]}</span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: t.bg, color: t.fg }}><StatusIcon kind={deal.status === STATUS.Released || deal.status === STATUS.Resolved ? 'done' : deal.status === STATUS.Disputed ? 'alert' : deal.status === STATUS.Refunded ? 'closed' : 'live'} />{STATUS_LABEL[deal.status]}</span>
             <ChevronDown className="size-4 transition-transform" style={{ color: c.subtle, transform: open ? 'rotate(180deg)' : 'none' }} />
           </div>
         </div>
@@ -114,7 +116,7 @@ export function DealCard({ deal, me, onChanged, defaultOpen = false, index = 0 }
           <div className="mt-3 flex gap-1.5" aria-label={`Step ${idx + 1} of 4`}>
             {STEPS.map((s, i) => (
               <div key={s} className="flex-1">
-                <div className="h-1 rounded-full" style={{ background: i <= idx ? c.accent : 'rgba(18,45,69,0.1)' }} />
+                <div className="h-1 rounded-full" style={{ background: i <= idx ? c.accent : 'rgba(255,255,255,0.1)' }} />
                 <p className="mt-1 flex items-center gap-0.5 text-[10px] font-medium" style={{ color: i <= idx ? c.ink : c.subtle }}>
                   {i < idx && <Check className="size-2.5" style={{ color: c.success }} />}{s}
                 </p>

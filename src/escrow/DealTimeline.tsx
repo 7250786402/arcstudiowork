@@ -63,17 +63,18 @@ export function DealTimeline({ deal }: { deal: Deal }) {
     <div>
       <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: c.muted }}>Timeline</p>
       {isLoading ? (
-        <div className="mt-2 h-10 animate-pulse rounded-xl" style={{ background: 'rgba(18,45,69,0.06)' }} />
+        <div className="mt-2 h-10 animate-pulse rounded-xl" style={{ background: 'rgba(255,255,255,0.06)' }} />
       ) : isError ? (
         <p className="mt-2 text-xs" style={{ color: c.muted }}>Could not load onchain history right now.</p>
       ) : items.length === 0 ? (
         <p className="mt-2 text-xs" style={{ color: c.muted }}>No events found for this deal yet.</p>
       ) : (
         <ol className="mt-2 space-y-3">
-          {items.map((item) => (
-            <li key={item.key} className="flex gap-3">
-              <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full" style={{ background: item.hash ? c.accent : 'rgba(18,45,69,0.12)' }}>
-                <Check className="size-3" style={{ color: item.hash ? '#fff' : c.muted }} />
+          {items.map((item, i) => (
+            <li key={item.key} className="relative flex gap-3">
+              {i < items.length - 1 && <span aria-hidden className="absolute left-[9px] top-6 -bottom-3 w-px" style={{ background: 'linear-gradient(180deg, rgba(172,198,233,0.45), rgba(172,198,233,0.08))' }} />}
+              <div className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full" style={{ background: item.hash ? c.accent : 'rgba(255,255,255,0.12)', boxShadow: item.hash ? '0 0 0 3px rgba(172,198,233,0.16), 0 0 14px rgba(172,198,233,0.45)' : 'none' }}>
+                <Check className="size-3" style={{ color: item.hash ? c.onAccent : c.muted }} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium" style={{ color: c.ink }}>{item.label}</p>

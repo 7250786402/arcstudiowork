@@ -57,9 +57,14 @@ A simple USDC Tip Jar app on Arc Testnet. Users connect their wallet and send US
 
 ## Design notes
 
-- Fonts (Space Grotesk, DM Sans) load from `index.html`; tokens and layered shadows live in `src/escrow/theme.ts`.
-- `src/ui/` holds the shared 3D hero (`HeroCard`, `Coin3D`) and background (`Backdrop`). Use `HeroCard` for the one big number on a screen.
-- The raised look of primary buttons comes from CSS selectors in `src/index.css` that match the navy accent colour; change both together.
+- Dark immersive look (Arc Dark): tokens and glass surfaces live in `src/escrow/theme.ts`; fonts (Space Grotesk, DM Sans) load from `index.html`. Text on the pale-blue accent uses `c.onAccent`.
+- `src/ui/` is the shared kit: `AppShell` (two panels on desktop), `SummaryPanel` (the one big number plus a 3D visual), `Button`, `Tabs`, `Skeleton`, `EmptyState`, `Reveal`, `CountUp`, `Backdrop`.
+- Each app has one signature visual driven by real data: `BountyPoolVisual` (coin per open bounty), `VaultVisual` (door shut while deals hold funds), `GoalVisual` and `GoalRing` (raised over goal). With no data they stay still.
+- Motion is wrapped in `MotionConfig reducedMotion="user"` in `src/App.tsx`; CSS animations also stop under reduced motion (`src/index.css`).
+- Avoid very long single file writes: split big components into smaller files.
+
+- Contract tests (Foundry): `contracts/test/` has unit, fuzz and invariant tests for EscrowDeal (101), Crowdfund (94) and BountyBoard (98). Run `forge test`. A live-chain integration script for EscrowDeal is in `/home/user/fork-tests/` and was flaky (3 of 5 runs fully green).
+- Known BountyBoard limits (from the tests): one spam submission blocks `cancelBounty`, and on a bounty with no deadline the creator cannot reclaim; a creator can submit to their own bounty and approve themselves, so the reputation counters are not trustworthy and the UI does not show them.
 
 ## Key Files
 

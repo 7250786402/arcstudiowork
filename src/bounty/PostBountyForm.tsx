@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useAccount, useReadContract } from 'wagmi'
 import { erc20Abi } from 'viem'
 import { ConnectKitButton } from 'connectkit'
-import { Loader2 } from 'lucide-react'
 import { parseAmount } from '@/onchain-money'
 import { CHAIN_ID, USDC_ADDRESS, ZERO, usd } from '@/escrowTypes'
 import { BOUNTY_ABI } from '@/bountyAbi'
 import { CONTRACT_ADDRESS, TAG_OPTIONS } from '@/bountyTypes'
 import { c, display, glass } from '@/escrow/theme'
 import { useTxFlow } from '@/escrow/useTxFlow'
+import { Button } from '@/ui/Button'
+import { ActionNote, Strong } from '@/ui/ActionNote'
+import { addPending } from '@/lib/pending'
 
 const DEADLINES = [
   { label: '3 days', days: 3 },
@@ -33,10 +35,6 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       {hint && <span className="mt-1.5 block text-xs text-pretty" style={{ color: c.subtle }}>{hint}</span>}
     </label>
   )
-}
-
-function Spin({ children }: { children: ReactNode }) {
-  return <span className="flex items-center justify-center gap-2"><Loader2 className="size-4 animate-spin" />{children}</span>
 }
 
 export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
@@ -63,8 +61,11 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
   })
 
   const onApproved = useCallback(() => { void refetchAllowance() }, [refetchAllowance])
-  const approve = useTxFlow(onApproved)
+  const approve = useTxFlow(onApproved, { celebrate: false })
   const create = useTxFlow(onCreated)
+  useEffect(() => {
+    if (create.hash) addPending({ hash: create.hash, app: 'bounty', label: `Posting "${title.trim() || 'new bounty'}"` })
+  }, [create.hash, title])
 
   const enough = rewardRaw !== null && balance !== undefined && balance >= rewardRaw
   const needsApproval = rewardRaw !== null && (allowance ?? 0n) < rewardRaw
@@ -101,7 +102,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
         <div className="mt-3 flex items-center justify-between text-xs" style={{ color: c.muted }}>
           <div className="flex gap-1.5">
             {[5, 10, 25, 50].map((v) => (
-              <button key={v} type="button" onClick={() => setReward(String(v))} className="min-h-9 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
+              <button key={v} type="button" onClick={() => setReward(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
             ))}
           </div>
           <span className="tabular-nums">{balance !== undefined ? `Balance ${usd(balance)}` : ''}</span>
@@ -111,7 +112,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs" style={{ color: c.muted }}>Start from:</span>
         {TEMPLATES.map((t) => (
-          <button key={t.label} type="button" className="min-h-9 rounded-xl px-3 text-xs font-semibold" style={{ color: c.ink, ...glass.inner }}
+          <button key={t.label} type="button" className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={{ color: c.ink, ...glass.inner }}
             onClick={() => { setTitle(t.title); setDesc(t.desc); setCriteria(t.criteria); setTags(t.tags); setHours(t.hours) }}>
             {t.label}
           </button>
@@ -131,8 +132,8 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
       <Field label="Skills">
         <div className="flex flex-wrap gap-1.5">
           {TAG_OPTIONS.map((t) => (
-            <button key={t} type="button" onClick={() => toggleTag(t)} className="min-h-9 rounded-xl px-3 text-xs font-semibold capitalize"
-              style={tags.includes(t) ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>{t}</button>
+            <button key={t} type="button" onClick={() => toggleTag(t)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold capitalize"
+              style={tags.includes(t) ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{t}</button>
           ))}
         </div>
       </Field>
@@ -140,8 +141,8 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
       <Field label="Deadline" hint={days === 0 ? 'Without a deadline, your USDC stays locked once someone submits, until you pick a winner.' : 'After the deadline you can take your USDC back if you have not picked a winner.'}>
         <div className="flex flex-wrap gap-1.5">
           {DEADLINES.map((d) => (
-            <button key={d.label} type="button" onClick={() => setDays(d.days)} className="min-h-9 rounded-xl px-3 text-xs font-semibold"
-              style={days === d.days ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>{d.label}</button>
+            <button key={d.label} type="button" onClick={() => setDays(d.days)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold"
+              style={days === d.days ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{d.label}</button>
           ))}
         </div>
       </Field>
@@ -150,23 +151,28 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
         <input inputMode="numeric" value={hours} onChange={(e) => setHours(e.target.value.replace(/\D/g, '').slice(0, 3))} placeholder="0" className={inputCls} style={{ color: c.ink }} />
       </Field>
 
-      {err && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(192,57,43,0.08)' }}>{err}</p>}
+      {err && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(240,128,140,0.08)' }}>{err}</p>}
       {rewardRaw !== null && balance !== undefined && !enough && (
         <p className="text-xs font-medium" style={{ color: c.danger }}>Your balance is lower than the reward. Use Get test USDC in the sidebar.</p>
+      )}
+
+      {isConnected && (
+        <ActionNote
+          summary={<>lock <Strong>{reward || '0'} USDC</Strong> as the reward. It is paid to the winner you pick.{' '}{days > 0 ? 'If you pick nobody by the deadline, you can take it back.' : 'With no deadline, it stays locked once someone submits, until you pick a winner.'}</>}
+          missing={[title.trim() === '' && 'a title', desc.trim() === '' && 'a description', criteria.trim() === '' && 'what counts as done', (rewardRaw === null || rewardRaw === 0n) && 'a reward', rewardRaw !== null && balance !== undefined && !enough && 'enough USDC'].filter((m): m is string => typeof m === 'string')}
+        />
       )}
 
       {!isConnected ? (
         <div className="flex justify-center"><ConnectKitButton /></div>
       ) : needsApproval ? (
-        <button disabled={!formOk || !enough || approve.busy} onClick={doApprove}
-          className="min-h-12 w-full rounded-2xl text-sm font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40" style={{ background: c.accent }}>
-          {approve.pending ? <Spin>Confirm in wallet...</Spin> : approve.confirming ? <Spin>Allowing USDC...</Spin> : 'Step 1 of 2: Allow USDC'}
-        </button>
+        <Button block className="min-h-12" disabled={!formOk || !enough} loading={approve.pending || approve.confirming} onClick={doApprove}>
+          {approve.pending ? 'Confirm in wallet...' : approve.confirming ? 'Allowing USDC...' : 'Step 1 of 2: Allow USDC'}
+        </Button>
       ) : (
-        <button disabled={!formOk || !enough || create.busy} onClick={doCreate}
-          className="min-h-12 w-full rounded-2xl text-sm font-semibold text-white transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40" style={{ background: c.success }}>
-          {create.pending ? <Spin>Confirm in wallet...</Spin> : create.confirming ? <Spin>Posting bounty...</Spin> : `Step 2 of 2: Lock ${reward || '0'} USDC as reward`}
-        </button>
+        <Button block variant="success" className="min-h-12" disabled={!formOk || !enough} loading={create.pending || create.confirming} onClick={doCreate}>
+          {create.pending ? 'Confirm in wallet...' : create.confirming ? 'Posting bounty...' : `Step 2 of 2: Lock ${reward || '0'} USDC as reward`}
+        </Button>
       )}
     </section>
   )

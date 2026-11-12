@@ -73,10 +73,10 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <ConnectKitProvider>
+        <ConnectKitProvider mode="dark">
           <App />
           <StudioWatermark />
-          <Toaster position="top-center" />
+          <Toaster position="top-center" theme="dark" />
         </ConnectKitProvider>
       </QueryClientProvider>
     </WagmiProvider>

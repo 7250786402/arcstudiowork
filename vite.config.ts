@@ -34,6 +34,20 @@ export default defineConfig({
       'vite-plugin-node-polyfills/shims/process',
     ],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split big libraries so they download in parallel and stay cached between deploys.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('framer-motion') || id.includes('motion-dom') || id.includes('motion-utils')) return 'motion'
+          if (id.includes('/viem/') || id.includes('/abitype/') || id.includes('/ox/')) return 'viem'
+          if (id.includes('/wagmi/') || id.includes('/@wagmi/')) return 'wagmi'
+          return undefined
+        },
+      },
+    },
+  },
   server: {
     allowedHosts: true,
     cors: true,

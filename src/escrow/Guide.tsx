@@ -32,7 +32,7 @@ export function Guide() {
       <ol className="mt-4 space-y-3">
         {STEPS.map(({ icon: Icon, title, body }, i) => (
           <li key={title} className="flex gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl" style={{ background: 'rgba(18,45,69,0.08)' }}>
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-xl" style={{ background: 'rgba(255,255,255,0.08)' }}>
               <Icon className="size-4" style={{ color: c.accent }} />
             </div>
             <div>

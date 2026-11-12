@@ -2,19 +2,22 @@ import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
 import { erc20Abi } from 'viem'
 import { ChevronDown, Clock, Loader2, Trophy, Users } from 'lucide-react'
-import { CHAIN_ID, USDC_ADDRESS, short, usd } from '@/escrowTypes'
+import { CHAIN_ID, USDC_ADDRESS, usd } from '@/escrowTypes'
 import type { Addr } from '@/escrowTypes'
 import { parseAmount } from '@/onchain-money'
 import { BOUNTY_ABI } from '@/bountyAbi'
 import { CONTRACT_ADDRESS, fmtDeadline } from '@/bountyTypes'
 import type { Bounty, Submission } from '@/bountyTypes'
 import { c, display, glass } from '@/escrow/theme'
+import { AddressTag } from '@/ui/AddressAvatar'
 import { useTxFlow } from '@/escrow/useTxFlow'
+import { Button } from '@/ui/Button'
 import { BountyActivity } from './BountyActivity'
 import { useNow } from './useNow'
+import { StatusIcon } from '@/ui/StatusIcon'
 
 const TAG_COLOR: Record<string, string> = {
-  design: '#7d5fd0', development: '#2d7fc4', content: '#1f9d6a', marketing: '#b7791f', research: '#c0392b', bug: '#d35400', other: '#5c6b7c',
+  design: '#b7a2f0', development: '#7fb8ee', content: '#6fd3a8', marketing: '#e6b45a', research: '#f0808c', bug: '#f2a066', other: '#b4c2d4',
 }
 
 function Spin({ children }: { children: ReactNode }) {
@@ -22,17 +25,7 @@ function Spin({ children }: { children: ReactNode }) {
 }
 
 function Btn({ children, onClick, disabled, kind = 'primary' }: { children: ReactNode; onClick: () => void; disabled?: boolean; kind?: 'primary' | 'success' | 'danger' | 'ghost' }) {
-  const style =
-    kind === 'primary' ? { background: c.accent, color: '#fff' }
-    : kind === 'success' ? { background: c.success, color: '#fff' }
-    : kind === 'danger' ? { color: c.danger, background: 'rgba(192,57,43,0.08)' }
-    : { color: c.ink, ...glass.inner }
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className="min-h-11 w-full rounded-2xl px-4 text-sm font-semibold transition-all active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40" style={style}>
-      {children}
-    </button>
-  )
+  return <Button block variant={kind} onClick={onClick} disabled={disabled}>{children}</Button>
 }
 
 export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; subs: readonly Submission[]; me?: Addr; onChanged: () => void }) {
@@ -51,7 +44,7 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
     if (tipRaw === null) return
     void runTip((w) => w({ address: CONTRACT_ADDRESS, abi: BOUNTY_ABI, functionName: 'tipWinner', args: [bounty.id, tipRaw], chainId: CHAIN_ID }))
   }, [runTip, tipRaw, bounty.id])
-  const tipApprove = useTxFlow(onTipApproved)
+  const tipApprove = useTxFlow(onTipApproved, { celebrate: false })
 
   const meL = me?.toLowerCase()
   const isCreator = !!meL && meL === bounty.creator.toLowerCase()
@@ -62,10 +55,10 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
   const tags = bounty.tags ? bounty.tags.split(',').map((t) => t.trim()).filter(Boolean) : []
   const error = act.error || tip.error || tipApprove.error
 
-  const chip = isClaimed ? { t: 'Awarded', bg: 'rgba(26,128,71,0.12)', fg: c.success }
-    : bounty.status === 2 ? { t: 'Cancelled', bg: 'rgba(92,107,124,0.12)', fg: c.muted }
-    : expired ? { t: 'Expired', bg: 'rgba(183,121,31,0.12)', fg: c.warn }
-    : { t: 'Open', bg: 'rgba(18,45,69,0.08)', fg: c.accent }
+  const chip = isClaimed ? { k: 'done' as const, t: 'Awarded', bg: 'rgba(141,216,159,0.12)', fg: c.success }
+    : bounty.status === 2 ? { k: 'closed' as const, t: 'Cancelled', bg: 'rgba(92,107,124,0.12)', fg: c.muted }
+    : expired ? { k: 'warn' as const, t: 'Expired', bg: 'rgba(230,180,90,0.12)', fg: c.warn }
+    : { k: 'live' as const, t: 'Open', bg: 'rgba(255,255,255,0.08)', fg: c.accent }
 
   const call = (fn: 'withdrawSubmission' | 'cancelBounty' | 'claimExpiredBounty') =>
     void act.run((w) => w({ address: CONTRACT_ADDRESS, abi: BOUNTY_ABI, functionName: fn, args: [bounty.id], chainId: CHAIN_ID }))
@@ -88,22 +81,23 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
       <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="w-full p-4 text-left">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold" style={{ ...display, color: c.ink }}>{bounty.title}</p>
+            <p className="truncate text-base font-semibold" style={{ ...display, color: c.ink }}>{bounty.title}</p>
             <div className="mt-1 flex flex-wrap gap-1">
               {tags.map((t) => (
-                <span key={t} className="rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize" style={{ color: TAG_COLOR[t] ?? c.muted, background: 'rgba(18,45,69,0.06)' }}>{t}</span>
+                <span key={t} className="rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize" style={{ color: TAG_COLOR[t] ?? c.muted, background: 'rgba(255,255,255,0.06)' }}>{t}</span>
               ))}
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <span className="rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: chip.bg, color: chip.fg }}>{chip.t}</span>
+            <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: chip.bg, color: chip.fg }}><StatusIcon kind={chip.k} />{chip.t}</span>
             <ChevronDown className="size-4 transition-transform" style={{ color: c.subtle, transform: open ? 'rotate(180deg)' : 'none' }} />
           </div>
         </div>
         <div className="mt-3 flex items-end justify-between">
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-center gap-2">
+            <span aria-hidden className="flex size-7 items-center justify-center rounded-full text-sm font-bold" style={{ background: 'radial-gradient(circle at 30% 25%, #3a74aa, #0d2740)', color: '#e8f1fb', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.35), 0 0 0 2px rgba(172,198,233,0.4), 0 4px 10px rgba(0,0,0,0.4)' }}>$</span>
             <span className="text-3xl font-bold tabular-nums" style={{ ...display, color: c.ink }}>{usd(bounty.reward)}</span>
-            <span className="text-sm font-medium" style={{ color: c.subtle }}>USDC</span>
+            <span className="self-end pb-1 text-sm font-medium" style={{ color: c.subtle }}>USDC</span>
           </div>
           <div className="flex items-center gap-3 text-xs" style={{ color: c.muted }}>
             {bounty.deadline > 0n && isOpen && <span className="flex items-center gap-1"><Clock className="size-3" />{fmtDeadline(bounty.deadline)}</span>}
@@ -122,7 +116,7 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
             </div>
           )}
           <p className="text-xs" style={{ color: c.muted }}>
-            Posted by {isCreator ? 'you' : short(bounty.creator)}{bounty.estimatedHours > 0n ? ` · about ${bounty.estimatedHours.toString()}h of work` : ''}
+            Posted by {isCreator ? 'you' : <AddressTag address={bounty.creator} />}{bounty.estimatedHours > 0n ? ` · about ${bounty.estimatedHours.toString()}h of work` : ''}
           </p>
 
           {subs.length > 0 && (
@@ -131,16 +125,16 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
               {subs.map((s) => (
                 <div key={s.submitter} className="rounded-2xl p-3" style={glass.inner}>
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold tabular-nums" style={{ color: c.accent }}>{short(s.submitter)}{s.submitter.toLowerCase() === meL ? ' (you)' : ''}</span>
+                    <span className="text-xs font-semibold tabular-nums" style={{ color: c.accent }}><AddressTag address={s.submitter} you={s.submitter.toLowerCase() === meL} /></span>
                     {isCreator && isOpen && (confirmFor === s.submitter ? (
                       <span className="flex gap-1.5">
-                        <button onClick={() => award(s.submitter)} disabled={act.busy} className="min-h-9 rounded-xl px-3 text-xs font-semibold text-white disabled:opacity-40" style={{ background: c.success }}>Confirm</button>
-                        <button onClick={() => setConfirmFor(null)} className="min-h-9 rounded-xl px-3 text-xs font-semibold" style={{ color: c.muted }}>No</button>
+                        <Button size="sm" variant="success" onClick={() => award(s.submitter)} disabled={act.busy}>Confirm</Button>
+                        <Button size="sm" variant="ghost" onClick={() => setConfirmFor(null)}>No</Button>
                       </span>
                     ) : (
-                      <button onClick={() => setConfirmFor(s.submitter)} className="flex min-h-9 items-center gap-1 rounded-xl px-3 text-xs font-semibold text-white" style={{ background: c.success }}>
+                      <Button size="sm" variant="success" onClick={() => setConfirmFor(s.submitter)}>
                         <Trophy className="size-3" />Pick winner
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   <p className="mt-1 text-sm text-pretty" style={{ color: c.ink }}>{s.submissionNote}</p>
@@ -152,8 +146,8 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
 
           {isClaimed && (
             <div className="space-y-2">
-              <p className="rounded-2xl px-3.5 py-3 text-sm font-medium" style={{ background: 'rgba(26,128,71,0.08)', color: c.success }}>
-                Winner: {short(bounty.claimer)}{bounty.claimer.toLowerCase() === meL ? ' (you)' : ''}
+              <p className="rounded-2xl px-3.5 py-3 text-sm font-medium" style={{ background: 'rgba(141,216,159,0.08)', color: c.success }}>
+                Winner: <AddressTag address={bounty.claimer} you={bounty.claimer.toLowerCase() === meL} />
               </p>
               {me && !tipOpen && <Btn kind="ghost" onClick={() => setTipOpen(true)}>Tip the winner</Btn>}
               {me && tipOpen && (
@@ -199,7 +193,7 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
 
           <BountyActivity bountyId={bounty.id} />
 
-          {error && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(192,57,43,0.08)' }}>{error}</p>}
+          {error && <p className="rounded-2xl px-4 py-3 text-sm" style={{ color: c.danger, background: 'rgba(240,128,140,0.08)' }}>{error}</p>}
         </div>
       )}
     </article>

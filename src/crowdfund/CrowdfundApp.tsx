@@ -1,19 +1,39 @@
 import { useCallback, useMemo, useState } from 'react'
+import { MotionConfig } from 'framer-motion'
 import { useAccount, useReadContract, useReadContracts, useSwitchChain } from 'wagmi'
 import { ConnectKitButton } from 'connectkit'
-import { AlertTriangle, HandCoins } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { CHAIN_ID, ZERO, usd } from '@/escrowTypes'
 import { CROWDFUND_ABI } from '@/crowdfundAbi'
-import { SPECTRAL, c, display, glass } from '@/escrow/theme'
+import { c, display, glass } from '@/escrow/theme'
+import { AppShell } from '@/ui/AppShell'
+import { Button } from '@/ui/Button'
+import { EmptyState } from '@/ui/EmptyState'
+import { GoalVisual } from '@/ui/GoalRing'
+import { Reveal } from '@/ui/Reveal'
+import { Skeleton } from '@/ui/Skeleton'
+import { SummaryPanel } from '@/ui/SummaryPanel'
+import { Tabs } from '@/ui/Tabs'
 import { CampaignCard } from './CampaignCard'
 import { StartCampaignForm } from './StartCampaignForm'
 import { CROWDFUND_ADDRESS, STATUS } from './crowdfundTypes'
 import type { Campaign } from './crowdfundTypes'
-import { HeroCard } from '@/ui/HeroCard'
+import { useNow } from '@/bounty/useNow'
+import { useContractEvents } from '@/lib/useContractEvents'
+import { crowdfundHeldSeries } from '@/lib/series'
+import { ActivityChart } from '@/ui/ActivityChart'
+import { TabPanel } from '@/ui/TabPanel'
+import { PendingCards } from '@/ui/PendingCards'
+import { useFreshKeys } from '@/ui/useFreshKeys'
 
 type Tab = 'discover' | 'start' | 'mine'
 
+const chip = (on: boolean) => (on ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner })
+
 export default function CrowdfundApp() {
+  const nowSec = useNow()
+  const events = useContractEvents({ key: 'crowdfund', address: CROWDFUND_ADDRESS, abi: CROWDFUND_ABI })
+  const heldSeries = useMemo(() => crowdfundHeldSeries(events.data), [events.data])
   const { address, chainId, isConnected } = useAccount()
   const { switchChain } = useSwitchChain()
   const [tab, setTab] = useState<Tab>('discover')
@@ -35,6 +55,7 @@ export default function CrowdfundApp() {
   const refresh = useCallback(() => { void refetchCount(); void refetchAll() }, [refetchCount, refetchAll])
   const onCreated = useCallback(() => { refresh(); setTab('discover'); setLiveOnly(true) }, [refresh])
 
+  const fresh = useFreshKeys(ids.map((id) => id.toString()), !isLoading)
   const items = ids.flatMap((_, i) => {
     const a = res?.[i * 3]
     const s = res?.[i * 3 + 1]
@@ -50,91 +71,97 @@ export default function CrowdfundApp() {
   const meL = address?.toLowerCase()
   const live = items.filter((i) => i.status === STATUS.Active)
   const raisedLive = live.reduce((sum, i) => sum + i.campaign.raised, 0n)
+  const goalLive = live.reduce((sum, i) => sum + i.campaign.goal, 0n)
+  const funded = items.filter((i) => i.status === STATUS.Succeeded || i.status === STATUS.Withdrawn).length
   const mine = items.filter((i) => i.campaign.creator.toLowerCase() === meL || i.pledge > 0n)
   const needsAction = mine.filter((i) =>
     ((i.status === STATUS.Failed || i.status === STATUS.Cancelled) && i.pledge > 0n)
     || (i.status === STATUS.Succeeded && i.campaign.creator.toLowerCase() === meL)).length
   const shown = items.filter((i) => (liveOnly ? i.status === STATUS.Active : true))
 
-  const empty = (title: string, body: string, cta?: boolean) => (
-    <div className="rounded-3xl p-8 text-center" style={glass.card}>
-      <HandCoins className="mx-auto mb-2 size-7" style={{ color: c.subtle }} />
-      <p className="text-sm font-semibold" style={{ color: c.ink }}>{title}</p>
-      <p className="mx-auto mt-1 max-w-xs text-xs text-pretty" style={{ color: c.muted }}>{body}</p>
-      {cta && <button onClick={() => setTab('start')} className="mt-4 min-h-11 rounded-2xl px-5 text-sm font-semibold text-white" style={{ background: c.accent }}>Start a campaign</button>}
-    </div>
-  )
-
-  const card = (i: (typeof items)[number]) => (
-    <CampaignCard key={i.campaign.id.toString()} campaign={i.campaign} status={i.status} myPledge={i.pledge} me={address} onChanged={refresh} />
-  )
+  const startCta = <Button onClick={() => setTab('start')}>Start a campaign</Button>
+  const list = (rows: typeof items) => rows.map((i, n) => (
+    <Reveal key={i.campaign.id.toString()} index={n} fresh={fresh.has(i.campaign.id.toString())}>
+      <CampaignCard campaign={i.campaign} status={i.status} myPledge={i.pledge} me={address} onChanged={refresh} />
+    </Reveal>
+  ))
 
   return (
-    <div className="min-h-dvh" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-      <div className="h-1 w-full" style={{ background: SPECTRAL }} />
-      <main className="mx-auto max-w-md space-y-4 px-4 py-6">
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold text-balance" style={{ ...display, color: c.ink }}>Crowdfund</h1>
-            <p className="text-xs" style={{ color: c.muted }}>Reach the goal or everyone gets their USDC back</p>
-          </div>
-          <ConnectKitButton />
-        </header>
-
+    <MotionConfig reducedMotion="user">
+      <AppShell
+        side={
+          <>
+            <header className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl font-bold text-balance" style={{ ...display, color: c.ink }}>Crowdfund</h1>
+                <p className="text-sm text-pretty" style={{ color: c.muted }}>Set a goal and a deadline. Reach it and the funds go out. Miss it and every backer gets a refund.</p>
+              </div>
+              <ConnectKitButton />
+            </header>
+            <SummaryPanel
+              chart={<ActivityChart title="Held in all campaigns" points={heldSeries} nowSec={nowSec} />}
+              eyebrow="Raised in live campaigns"
+              amountRaw={isLoading ? null : raisedLive}
+              formatAmount={usd}
+              caption={isLoading ? 'Loading from Arc Testnet' : `${live.length} live ${live.length === 1 ? 'campaign' : 'campaigns'} on Arc Testnet`}
+              visual={(tilt) => <GoalVisual raised={raisedLive} goal={goalLive} tilt={tilt} />}
+              stats={isLoading ? undefined : [
+                { label: 'Live', value: String(live.length) },
+                { label: 'Started', value: String(items.length) },
+                { label: 'Funded', value: String(funded), tone: 'success' },
+              ]}
+              refreshLabel="Refresh campaigns"
+              onRefresh={refresh}
+            >
+              <Button block onClick={() => setTab('start')}>Start a campaign</Button>
+            </SummaryPanel>
+          </>
+        }
+      >
         {wrongChain && (
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(192,57,43,0.08)', border: '1px solid rgba(192,57,43,0.2)' }}>
+          <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: 'rgba(240,128,140,0.12)', border: '1px solid rgba(240,128,140,0.3)' }}>
             <AlertTriangle className="size-4 shrink-0" style={{ color: c.danger }} />
             <p className="text-sm" style={{ color: c.danger }}>Switch to Arc Testnet to continue.</p>
-            <button onClick={() => switchChain({ chainId: CHAIN_ID })} className="ml-auto min-h-9 rounded-xl px-3 text-xs font-semibold text-white" style={{ background: c.danger }}>Switch</button>
+            <Button variant="danger" size="sm" className="ml-auto" onClick={() => switchChain({ chainId: CHAIN_ID })}>Switch</Button>
           </div>
         )}
 
-        <HeroCard
-          label="Raised in live campaigns"
-          amount={isLoading ? '--' : usd(raisedLive)}
-          caption={isLoading ? 'Loading from Arc Testnet' : `${live.length} live ${live.length === 1 ? 'campaign' : 'campaigns'} on Arc Testnet`}
-          refreshLabel="Refresh campaigns"
-          onRefresh={refresh}
-        />
+        <Tabs group="crowdfund-tabs" value={tab} onChange={setTab} tabs={[{ id: 'discover', label: 'Discover' }, { id: 'start', label: 'Start' }, { id: 'mine', label: 'Mine', badge: needsAction }]} />
 
-        <nav className="flex gap-1 rounded-2xl p-1" style={glass.card} aria-label="Sections">
-          {([['discover', 'Discover'], ['start', 'Start'], ['mine', 'Mine']] as const).map(([id, label]) => (
-            <button key={id} onClick={() => setTab(id)} aria-current={tab === id} className="relative min-h-10 flex-1 rounded-xl text-sm font-semibold transition-colors"
-              style={tab === id ? { background: c.accent, color: '#fff' } : { color: c.muted }}>
-              {label}
-              {id === 'mine' && needsAction > 0 && <span className="absolute -right-0.5 -top-1 flex size-4 items-center justify-center rounded-full text-[10px] font-bold text-white" style={{ background: c.danger }}>{needsAction}</span>}
-            </button>
-          ))}
-        </nav>
+        <PendingCards app="crowdfund" />
 
-        {tab === 'start' && <StartCampaignForm onCreated={onCreated} />}
+        {tab === 'start' && <TabPanel><StartCampaignForm onCreated={onCreated} /></TabPanel>}
 
         {tab === 'discover' && (
+          <TabPanel>
           <section className="space-y-3">
             <div className="flex gap-1.5">
-              <button onClick={() => setLiveOnly(true)} className="min-h-9 rounded-xl px-3 text-xs font-semibold" style={liveOnly ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>Live</button>
-              <button onClick={() => setLiveOnly(false)} className="min-h-9 rounded-xl px-3 text-xs font-semibold" style={!liveOnly ? { background: c.accent, color: '#fff' } : { color: c.muted, ...glass.inner }}>All</button>
+              <button onClick={() => setLiveOnly(true)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(liveOnly)}>Live</button>
+              <button onClick={() => setLiveOnly(false)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(!liveOnly)}>All</button>
             </div>
-            {isLoading ? <div className="h-28 animate-pulse rounded-3xl" style={glass.card} />
-              : shown.length === 0 ? (items.length === 0
-                ? empty('No campaigns yet', 'Start the first one: set a goal and a deadline, and backers pledge USDC.', true)
-                : empty('No live campaigns', 'Switch to All to see finished ones, or start your own.', true))
-              : shown.map(card)}
+            {isLoading ? (
+              <div className="space-y-3">{[0, 1].map((n) => <Skeleton key={n} className="h-36 rounded-3xl" />)}</div>
+            ) : shown.length === 0 ? (
+              items.length === 0
+                ? <EmptyState kind="crowdfund" title="No campaigns yet" body="Start the first one: set a goal and a deadline, and backers pledge USDC." action={startCta} />
+                : <EmptyState kind="crowdfund" title="No live campaigns" body="Switch to All to see finished ones, or start your own." action={startCta} />
+            ) : list(shown)}
           </section>
+          </TabPanel>
         )}
 
         {tab === 'mine' && (
+          <TabPanel>
           <section className="space-y-3">
             {!isConnected ? (
-              <div className="rounded-3xl p-8 text-center" style={glass.card}>
-                <p className="text-sm font-semibold" style={{ color: c.ink }}>Connect a wallet</p>
-                <div className="mt-4 flex justify-center"><ConnectKitButton /></div>
-              </div>
-            ) : mine.length === 0 ? empty('Nothing here yet', 'Campaigns you start or back show up here.', true)
-              : mine.map(card)}
+              <EmptyState kind="wallet" title="Connect a wallet" body="Connect to see the campaigns you started or backed." action={<ConnectKitButton />} />
+            ) : mine.length === 0 ? (
+              <EmptyState kind="crowdfund" title="Nothing here yet" body="Campaigns you start or back show up here." action={startCta} />
+            ) : list(mine)}
           </section>
+          </TabPanel>
         )}
-      </main>
-    </div>
+      </AppShell>
+    </MotionConfig>
   )
 }

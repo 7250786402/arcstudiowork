@@ -1,43 +1,45 @@
 import type { CSSProperties } from 'react'
 
+/** Arc Dark. One deep-navy canvas, a pale-blue accent, glass-on-dark surfaces. */
 export const SPECTRAL = 'linear-gradient(90deg,#5fbeff,#af8ff4,#f05c6b,#ffcd83,#7ef1b3)'
 
 export const c = {
-  ink: '#0f1c2e',
-  muted: '#5c6b7c',
-  subtle: '#8a97a6',
-  accent: '#122d45',
-  success: '#1a8047',
-  danger: '#c0392b',
-  warn: '#b7791f',
-  bg: 'linear-gradient(180deg,#f9f9fc 0%,#fffcf7 52%,#fbf7f2 100%)',
+  ink: '#f4f7fb',
+  muted: '#b4c2d4',
+  subtle: '#8497ad',
+  /** Primary action colour (pale blue). Text placed on it must use onAccent. */
+  accent: '#acc6e9',
+  onAccent: '#0d1b2f',
+  success: '#8dd89f',
+  onSuccess: '#0d2a18',
+  danger: '#f0808c',
+  onDanger: '#2a0b10',
+  warn: '#e6b45a',
+  bg: 'linear-gradient(180deg,#0b1627 0%,#0d1b2f 58%,#122d45 100%)',
 }
-
-/** Layered shadows give cards real depth: a top highlight, a tight contact shadow and two soft ambient ones. */
-const RAISED =
-  '0 1px 0 rgba(255,255,255,0.95) inset, 0 -1px 0 rgba(18,45,69,0.04) inset, 0 2px 4px rgba(18,45,69,0.04), 0 14px 26px -8px rgba(18,45,69,0.10), 0 34px 52px -18px rgba(18,45,69,0.12)'
 
 export const glass: Record<'card' | 'inner' | 'hero', CSSProperties> = {
   card: {
-    background: 'rgba(255,255,255,0.68)',
-    backdropFilter: 'blur(24px) saturate(180%)',
-    WebkitBackdropFilter: 'blur(24px) saturate(180%)',
-    border: '1px solid rgba(255,255,255,0.72)',
-    boxShadow: RAISED,
+    background: 'linear-gradient(160deg, rgba(255,255,255,0.095) 0%, rgba(255,255,255,0.04) 100%)',
+    backdropFilter: 'blur(22px) saturate(150%)',
+    WebkitBackdropFilter: 'blur(22px) saturate(150%)',
+    border: '1px solid rgba(255,255,255,0.10)',
+    boxShadow:
+      '0 1px 0 rgba(255,255,255,0.12) inset, 0 -1px 0 rgba(0,0,0,0.25) inset, 0 2px 4px rgba(0,0,0,0.28), 0 22px 44px -14px rgba(0,0,0,0.55)',
   },
   /** Fields and chips sit slightly pressed into the card. */
   inner: {
-    background: 'rgba(255,255,255,0.52)',
-    border: '1px solid rgba(18,45,69,0.08)',
-    boxShadow: 'inset 0 1px 2px rgba(18,45,69,0.06)',
+    background: 'rgba(255,255,255,0.055)',
+    border: '1px solid rgba(255,255,255,0.09)',
+    boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.28)',
   },
   hero: {
-    background: 'linear-gradient(145deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.62) 100%)',
-    backdropFilter: 'blur(28px) saturate(190%)',
-    WebkitBackdropFilter: 'blur(28px) saturate(190%)',
-    border: '1px solid rgba(255,255,255,0.85)',
+    background: 'linear-gradient(150deg, rgba(172,198,233,0.16) 0%, rgba(255,255,255,0.05) 46%, rgba(255,255,255,0.03) 100%)',
+    backdropFilter: 'blur(26px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(26px) saturate(160%)',
+    border: '1px solid rgba(172,198,233,0.22)',
     boxShadow:
-      '0 1px 0 rgba(255,255,255,1) inset, 0 -1px 0 rgba(18,45,69,0.05) inset, 0 3px 6px rgba(18,45,69,0.05), 0 22px 38px -10px rgba(18,45,69,0.16), 0 50px 70px -26px rgba(18,45,69,0.18)',
+      '0 1px 0 rgba(255,255,255,0.18) inset, 0 -1px 0 rgba(0,0,0,0.3) inset, 0 4px 8px rgba(0,0,0,0.3), 0 34px 70px -22px rgba(0,0,0,0.7), 0 0 64px -24px rgba(172,198,233,0.3)',
   },
 }
 
