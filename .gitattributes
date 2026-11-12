@@ -1,0 +1,2 @@
+# Third-party library: do not count it in the repo language stats
+lib/** linguist-vendored

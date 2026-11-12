@@ -1,13 +1,15 @@
-# Escrow
+# USDC apps on Arc Testnet
 
-USDC apps on Arc Testnet: a bounty board and an escrow. In the escrow, a buyer locks USDC for a deal, the seller accepts the terms, and the money is released only when both sides are satisfied. If they disagree or go quiet, an arbiter or an agreed auto-release time settles it, so funds never stay stuck.
+Three small apps that use USDC on Arc Testnet: a **Bounty Board**, an **Escrow** and a **Crowdfund**. They run on testnet only and have not had a third-party audit.
+
+Live demo: https://gleaming-twilight-94b805.netlify.app (you need Arc Testnet USDC to try it)
 
 Built with [Arc Studio](https://studio.arc.io)
 
 The site holds three apps, with a switch at the top:
 
 - **Bounty Board:** post a task with a USDC reward, people submit work, and you pick the winner who gets paid. Filter by skill, search, and sort by reward. If a bounty has a deadline you can take your USDC back after it passes.
-- **Escrow:** described below. Open it directly with `?app=escrow`.
+- **Escrow:** a buyer locks USDC for a deal, the seller accepts the terms, and the money is released only when both sides are satisfied. If they disagree or go quiet, an arbiter or an agreed auto-release time settles it, so funds never stay stuck. Open it directly with `?app=escrow`.
 - **Crowdfund:** start a campaign with a USDC goal and a deadline. Backers pledge USDC. If the goal is reached, the money goes to the campaign wallet; if not, every backer can take their USDC back. Open it directly with `?app=crowdfund`.
 
 ## What you can do
