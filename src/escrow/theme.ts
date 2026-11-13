@@ -6,13 +6,13 @@ export const SPECTRAL = 'linear-gradient(90deg,#5fbeff,#af8ff4,#f05c6b,#ffcd83,#
 export const c = {
   ink: '#f4f7fb',
   muted: '#b4c2d4',
-  subtle: '#8497ad',
+  subtle: '#9aaabd',
   /** Primary action colour (pale blue). Text placed on it must use onAccent. */
   accent: '#acc6e9',
   onAccent: '#0d1b2f',
   success: '#8dd89f',
   onSuccess: '#0d2a18',
-  danger: '#f0808c',
+  danger: '#f4939d',
   onDanger: '#2a0b10',
   warn: '#e6b45a',
   bg: 'linear-gradient(180deg,#0b1627 0%,#0d1b2f 58%,#122d45 100%)',

@@ -111,7 +111,7 @@ export function CampaignCard({ campaign, status, myPledge, me, onChanged }: {
               <p className="text-xs font-semibold" style={{ color: c.ink }}>Back this campaign</p>
               <div className="flex gap-1.5">
                 {QUICK.map((q) => (
-                  <button key={q} onClick={() => setAmount(q)} className="btn min-h-11 flex-1 rounded-xl text-sm font-semibold tabular-nums" style={amount === q ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{q}</button>
+                  <button key={q} aria-pressed={amount === q} onClick={() => setAmount(q)} className="btn min-h-11 flex-1 rounded-xl text-sm font-semibold tabular-nums" style={amount === q ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{q}</button>
                 ))}
                 <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" aria-label="Pledge amount in USDC" className="min-h-11 w-24 rounded-xl px-3 text-right text-sm tabular-nums outline-none" style={{ ...glass.inner, color: c.ink }} />
               </div>

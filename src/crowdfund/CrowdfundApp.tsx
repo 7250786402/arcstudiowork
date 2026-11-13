@@ -136,8 +136,8 @@ export default function CrowdfundApp() {
           <TabPanel>
           <section className="space-y-3">
             <div className="flex gap-1.5">
-              <button onClick={() => setLiveOnly(true)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(liveOnly)}>Live</button>
-              <button onClick={() => setLiveOnly(false)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(!liveOnly)}>All</button>
+              <button aria-pressed={liveOnly} onClick={() => setLiveOnly(true)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(liveOnly)}>Live</button>
+              <button aria-pressed={!liveOnly} onClick={() => setLiveOnly(false)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(!liveOnly)}>All</button>
             </div>
             {isLoading ? (
               <div className="space-y-3">{[0, 1].map((n) => <Skeleton key={n} className="h-36 rounded-3xl" />)}</div>

@@ -83,7 +83,7 @@ export function StartCampaignForm({ onCreated }: { onCreated: () => void }) {
       <Field label="Goal (USDC)" hint={goalRaw ? `You need ${usd(goalRaw)} USDC for the campaign to succeed.` : 'Enter an amount above 0.'}>
         <div className="flex flex-wrap gap-1.5">
           {GOALS.map((g) => (
-            <button key={g} type="button" onClick={() => setGoal(g)} className="btn min-h-11 rounded-xl px-3 text-sm font-semibold tabular-nums"
+            <button key={g} type="button" aria-pressed={goal === g} onClick={() => setGoal(g)} className="btn min-h-11 rounded-xl px-3 text-sm font-semibold tabular-nums"
               style={goal === g ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{g}</button>
           ))}
         </div>

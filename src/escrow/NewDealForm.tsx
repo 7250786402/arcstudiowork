@@ -121,7 +121,7 @@ export function NewDealForm({ onCreated }: { onCreated: () => void }) {
         <div className="mt-3 flex items-center justify-between text-xs" style={{ color: c.muted }}>
           <div className="flex gap-1.5">
             {[10, 25, 50, 100].map((v) => (
-              <button key={v} type="button" onClick={() => setAmount(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
+              <button key={v} type="button" aria-pressed={amount === String(v)} onClick={() => setAmount(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
             ))}
           </div>
           <span className="tabular-nums">{balance !== undefined ? `Balance ${usd(balance)}` : ''}</span>

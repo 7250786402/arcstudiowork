@@ -137,7 +137,7 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
       items.push(
         <div key="res" className="space-y-2">
           <Note>Decide how much of the {usd(deal.amount)} USDC goes to the seller. The rest returns to the buyer.</Note>
-          <input inputMode="decimal" value={sellerShare} placeholder="Seller gets (USDC)" onChange={(e) => { if (/^\d*\.?\d{0,6}$/.test(e.target.value)) setSellerShare(e.target.value) }} className="w-full rounded-2xl px-3.5 py-3 text-sm tabular-nums outline-none" style={{ ...glass.inner, color: c.ink }} />
+          <input aria-label="Amount the seller receives, in USDC" inputMode="decimal" value={sellerShare} placeholder="Seller gets (USDC)" onChange={(e) => { if (/^\d*\.?\d{0,6}$/.test(e.target.value)) setSellerShare(e.target.value) }} className="w-full rounded-2xl px-3.5 py-3 text-sm tabular-nums outline-none" style={{ ...glass.inner, color: c.ink }} />
           <Btn disabled={busy || !shareOk} onClick={resolve}>{label('Submit decision')}</Btn>
         </div>,
       )

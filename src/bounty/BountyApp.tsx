@@ -132,13 +132,13 @@ export default function BountyApp() {
           <div className="space-y-2.5 rounded-3xl p-3.5" style={glass.card}>
             <label className="flex items-center gap-2 rounded-2xl px-3 py-2.5" style={glass.inner}>
               <Search className="size-4 shrink-0" style={{ color: c.subtle }} />
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search bounties" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" style={{ color: c.ink }} />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search bounties" placeholder="Search bounties" className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" style={{ color: c.ink }} />
             </label>
             <div className="flex flex-wrap gap-1.5">
-              <button onClick={() => setOnlyOpen((v) => !v)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(onlyOpen)}>Open only</button>
-              <button onClick={() => setSort((s) => (s === 'new' ? 'reward' : 'new'))} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(false)}>{sort === 'new' ? 'Newest' : 'Highest reward'}</button>
+              <button aria-pressed={onlyOpen} onClick={() => setOnlyOpen((v) => !v)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(onlyOpen)}>Open only</button>
+              <button aria-pressed={sort === 'reward'} onClick={() => setSort((s) => (s === 'new' ? 'reward' : 'new'))} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold" style={chip(false)}>{sort === 'new' ? 'Newest' : 'Highest reward'}</button>
               {TAG_OPTIONS.map((t) => (
-                <button key={t} onClick={() => setTag(tag === t ? '' : t)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold capitalize" style={chip(tag === t)}>{t}</button>
+                <button key={t} aria-pressed={tag === t} onClick={() => setTag(tag === t ? '' : t)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold capitalize" style={chip(tag === t)}>{t}</button>
               ))}
             </div>
           </div>

@@ -154,7 +154,7 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 rounded-2xl p-3" style={glass.inner}>
                     <span className="text-sm" style={{ color: c.muted }}>$</span>
-                    <input inputMode="decimal" value={tipAmt} onChange={(e) => { if (/^\d*\.?\d{0,6}$/.test(e.target.value)) setTipAmt(e.target.value) }}
+                    <input aria-label="Tip amount in USDC" inputMode="decimal" value={tipAmt} onChange={(e) => { if (/^\d*\.?\d{0,6}$/.test(e.target.value)) setTipAmt(e.target.value) }}
                       className="w-full bg-transparent text-sm font-semibold outline-none" style={{ color: c.ink }} />
                     <span className="text-xs" style={{ color: c.subtle }}>USDC</span>
                   </label>

@@ -63,7 +63,7 @@ A simple USDC Tip Jar app on Arc Testnet. Users connect their wallet and send US
 - Motion is wrapped in `MotionConfig reducedMotion="user"` in `src/App.tsx`; CSS animations also stop under reduced motion (`src/index.css`).
 - Avoid very long single file writes: split big components into smaller files.
 
-- Contract tests (Foundry): `contracts/test/` has unit, fuzz and invariant tests for EscrowDeal (101), Crowdfund (94) and BountyBoard (98). Run `forge test`. A live-chain integration script for EscrowDeal is in `/home/user/fork-tests/` and was flaky (3 of 5 runs fully green).
+- Contract tests (Foundry): `contracts/test/` has unit, fuzz and invariant tests for EscrowDeal (101), Crowdfund (94) and BountyBoard (98). Run `forge test`. Live-chain fork tests (real USDC) are in `/home/user/fork-tests/`: Escrow 41, Bounty Board 26, Crowdfund 22, each green 3 runs in a row (`./run-3x.sh <Name>`). The full manual test checklist is `docs/testing-roadmap.md`.
 - Known BountyBoard limits (from the tests): one spam submission blocks `cancelBounty`, and on a bounty with no deadline the creator cannot reclaim; a creator can submit to their own bounty and approve themselves, so the reputation counters are not trustworthy and the UI does not show them.
 
 ## Key Files

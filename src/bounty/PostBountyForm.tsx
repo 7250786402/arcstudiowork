@@ -102,7 +102,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
         <div className="mt-3 flex items-center justify-between text-xs" style={{ color: c.muted }}>
           <div className="flex gap-1.5">
             {[5, 10, 25, 50].map((v) => (
-              <button key={v} type="button" onClick={() => setReward(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
+              <button key={v} type="button" aria-pressed={reward === String(v)} onClick={() => setReward(String(v))} className="min-h-11 rounded-xl px-3 font-semibold" style={glass.inner}>${v}</button>
             ))}
           </div>
           <span className="tabular-nums">{balance !== undefined ? `Balance ${usd(balance)}` : ''}</span>
@@ -141,7 +141,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
       <Field label="Deadline" hint={days === 0 ? 'Without a deadline, your USDC stays locked once someone submits, until you pick a winner.' : 'After the deadline you can take your USDC back if you have not picked a winner.'}>
         <div className="flex flex-wrap gap-1.5">
           {DEADLINES.map((d) => (
-            <button key={d.label} type="button" onClick={() => setDays(d.days)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold"
+            <button key={d.label} type="button" aria-pressed={days === d.days} onClick={() => setDays(d.days)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold"
               style={days === d.days ? { background: c.accent, color: c.onAccent } : { color: c.muted, ...glass.inner }}>{d.label}</button>
           ))}
         </div>
