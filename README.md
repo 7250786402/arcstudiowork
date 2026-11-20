@@ -49,4 +49,3 @@ bun run contracts:test   # run contract tests
 
 - `VITE_ESCROW_ADDRESS`: address of the deployed escrow contract on Arc Testnet.
 - `VITE_CROWDFUND_ADDRESS`: address of the deployed crowdfund contract on Arc Testnet.
-- `VITE_ESCROW_DEPLOY_BLOCK`: block number the escrow contract was deployed at. Deal timelines read events from this block onward.
