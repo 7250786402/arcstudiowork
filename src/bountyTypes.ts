@@ -42,7 +42,7 @@ export const CHAIN_ID = 5042002
 export const APP_URL = typeof window !== 'undefined' && !window.location.hostname.includes('studio.arc.io') && !window.location.hostname.includes('e2b.app')
   ? window.location.origin
   : 'https://gleaming-twilight-94b805.netlify.app'
-export const CONTRACT_ADDRESS = '0x8de137da25631defc4c990b46042daa8ba859fa3' as `0x${string}`
+export const CONTRACT_ADDRESS = '0x529d7675ad15d92a236a52f86298c3b0b845d02e' as `0x${string}`
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000' as `0x${string}`
 
 export function shortenAddr(addr: string) { return addr.slice(0, 6) + '...' + addr.slice(-4) }
@@ -68,3 +68,6 @@ export function parseErr(e: unknown): string {
   if (msg.includes('reverted')) return 'Transaction failed on-chain.'
   return 'Something went wrong. Please try again.'
 }
+
+/** Mirrors the contract's public REVIEW_GRACE: after the deadline the creator has this long to pick a winner when work was submitted. */
+export const REVIEW_GRACE_SECONDS = 7n * 86400n

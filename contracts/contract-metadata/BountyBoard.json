@@ -1,13 +1,20 @@
 {
-  "contractAddress": "0x8de137da25631defc4c990b46042daa8ba859fa3",
+  "contractAddress": "0x529d7675ad15d92a236a52f86298c3b0b845d02e",
   "network": "ARC-TESTNET",
   "deployerWalletId": "3c2464b2-8369-52e2-a782-800bbeca5396",
   "contract_code_path": "/home/user/app/contracts/BountyBoard.sol",
   "contract_compiled_code_path": "/home/user/app/contracts/out/BountyBoard.sol/BountyBoard.json",
   "contract_network_and_links": {
-    "Arc Testnet": "https://explorer.testnet.arc.io/address/0x8de137da25631defc4c990b46042daa8ba859fa3"
+    "Arc Testnet": "https://explorer.testnet.arc.io/address/0x529d7675ad15d92a236a52f86298c3b0b845d02e"
   },
   "contract_deployments": [
+    {
+      "chain": "Arc Testnet",
+      "address": "0x529d7675ad15d92a236a52f86298c3b0b845d02e",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x529d7675ad15d92a236a52f86298c3b0b845d02e",
+      "txHash": "0xe47250c5e1263542ceaec11b52530558d7b62a09dbd68348fb8ee80fbfca68d3",
+      "deployedAt": "2026-11-20T10:11:37.773Z"
+    },
     {
       "chain": "Arc Testnet",
       "address": "0x8de137da25631defc4c990b46042daa8ba859fa3",
@@ -37,6 +44,19 @@
     },
     {
       "type": "function",
+      "name": "REVIEW_GRACE",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "USDC_ADDRESS",
       "inputs": [],
       "outputs": [
@@ -47,6 +67,13 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "acceptOwnership",
+      "inputs": [],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -440,10 +467,23 @@
     },
     {
       "type": "function",
+      "name": "pendingOwner",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "renounceOwnership",
       "inputs": [],
       "outputs": [],
-      "stateMutability": "nonpayable"
+      "stateMutability": "pure"
     },
     {
       "type": "function",
@@ -630,6 +670,25 @@
           "type": "bool",
           "indexed": false,
           "internalType": "bool"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OwnershipTransferStarted",
+      "inputs": [
+        {
+          "name": "previousOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "newOwner",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
         }
       ],
       "anonymous": false

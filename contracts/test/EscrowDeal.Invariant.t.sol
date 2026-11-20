@@ -75,6 +75,12 @@ contract EscrowDealHandler is Test {
         escrow.refund(id);
     }
 
+    function withdrawBuyer(uint256 seed) external {
+        (bool ok, uint256 id) = _id(seed);
+        if (!ok) return;
+        escrow.withdrawBuyer(id);
+    }
+
     function cancel(uint256 seed) external {
         (bool ok, uint256 id) = _id(seed);
         if (!ok) return;
@@ -166,6 +172,8 @@ contract EscrowDealInvariantTest is Test {
                     || s == EscrowDeal.Status.Disputed
             ) {
                 total += d.amount;
+            } else if (s == EscrowDeal.Status.Refunded) {
+                total += escrow.buyerOwed(i);
             } else if (s == EscrowDeal.Status.Released) {
                 total += escrow.sellerOwed(i);
             } else if (s == EscrowDeal.Status.Resolved) {
@@ -181,6 +189,16 @@ contract EscrowDealInvariantTest is Test {
     /// @dev Stronger: nothing else funds the escrow, so it should match exactly (no stuck dust).
     function invariant_BalanceEqualsUnsettledDeals() public view {
         assertEq(usdc.balanceOf(address(escrow)), _unsettled());
+    }
+
+    /// @dev buyerOwed is only ever non-zero on Refunded deals and never exceeds the deal amount.
+    function invariant_BuyerOwedOnlyOnRefundedAndBounded() public view {
+        uint256 n = escrow.dealCount();
+        for (uint256 i; i < n; i++) {
+            EscrowDeal.Deal memory d = escrow.getDeal(i);
+            if (d.status != EscrowDeal.Status.Refunded) assertEq(escrow.buyerOwed(i), 0);
+            else assertLe(escrow.buyerOwed(i), d.amount);
+        }
     }
 
     function invariant_ResolvedSplitNeverExceedsAmount() public view {

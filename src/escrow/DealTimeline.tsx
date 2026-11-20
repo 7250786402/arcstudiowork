@@ -28,6 +28,9 @@ export function DealTimeline({ deal }: { deal: Deal }) {
       case 'DealCreated':
         items.push({ ...base, label: 'Deal created and funded', detail: `${usd(big(log.args.amount))} USDC locked` })
         break
+      case 'Accepted':
+        items.push({ ...base, label: 'Seller accepted the terms' })
+        break
       case 'Delivered':
         items.push({ ...base, label: 'Seller marked it delivered' })
         break
@@ -46,6 +49,12 @@ export function DealTimeline({ deal }: { deal: Deal }) {
       case 'PayoutUpdated':
         items.push({ ...base, label: 'Seller changed payout address' })
         break
+      case 'BuyerWithdrawn':
+        items.push({ ...base, label: 'Refund sent to the buyer', detail: `${usd(big(log.args.amount))} USDC` })
+        break
+      case 'ResolvedClaimed':
+        items.push({ ...base, label: 'Dispute share paid out', detail: `${usd(big(log.args.amount))} USDC` })
+        break
       case 'SellerWithdrawn':
         items.push({ ...base, label: 'Seller withdrew payout', detail: `${usd(big(log.args.amount))} USDC` })
         break
@@ -53,9 +62,10 @@ export function DealTimeline({ deal }: { deal: Deal }) {
   }
   items.sort((a, b) => (a.block === b.block ? 0 : (a.block ?? 0n) < (b.block ?? 0n) ? -1 : 1))
 
-  // Acceptance has no onchain event, so show it as a state-derived step without a transaction link.
+  // Deals made before the Accepted event existed have no record of it, so show a state-derived step without a link.
   const accepted = deal.status !== STATUS.Funded && deal.status !== STATUS.Refunded
-  if (accepted && items.length > 0) {
+  const hasAcceptedEvent = items.some((i) => i.label === 'Seller accepted the terms')
+  if (accepted && !hasAcceptedEvent && items.length > 0) {
     items.splice(1, 0, { key: 'accepted', label: 'Seller accepted the terms', note: 'No transaction record for this step' })
   }
 

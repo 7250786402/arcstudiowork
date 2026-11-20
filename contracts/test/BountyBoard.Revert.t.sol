@@ -33,7 +33,7 @@ contract BountyBoardRevertTest is BountyBoardTestBase {
     function test_Create_BadTypeReverts() public {
         vm.prank(creator);
         vm.expectRevert("Invalid bounty type");
-        bb.createBounty("t", "d", 1, "", 0, "", 3, 0);
+        bb.createBounty("t", "d", 1, "", DL, "", 3, 0);
     }
 
     function test_Create_NoAllowanceReverts() public {
@@ -41,7 +41,7 @@ contract BountyBoardRevertTest is BountyBoardTestBase {
         usdc.mint(noApproval, 100e6);
         vm.prank(noApproval);
         vm.expectRevert(bytes("allowance"));
-        bb.createBounty("t", "d", 1e6, "", 0, "", 0, 0);
+        bb.createBounty("t", "d", 1e6, "", DL, "", 0, 0);
     }
 
     function test_Create_InsufficientBalanceReverts() public {
@@ -49,7 +49,7 @@ contract BountyBoardRevertTest is BountyBoardTestBase {
         vm.startPrank(poor);
         usdc.approve(address(bb), type(uint256).max);
         vm.expectRevert(bytes("balance"));
-        bb.createBounty("t", "d", 1e6, "", 0, "", 0, 0);
+        bb.createBounty("t", "d", 1e6, "", DL, "", 0, 0);
         vm.stopPrank();
     }
 
@@ -342,14 +342,6 @@ contract BountyBoardRevertTest is BountyBoardTestBase {
         bb.claimExpiredBounty(id);
     }
 
-    function test_ClaimExpired_NoDeadlineNeverExpires() public {
-        uint256 id = _create();
-        vm.warp(START + 3650 days);
-        vm.prank(creator);
-        vm.expectRevert("Bounty not expired");
-        bb.claimExpiredBounty(id);
-    }
-
     function test_ClaimExpired_NonCreatorAfterDeadlineReverts() public {
         uint256 id = _createWithDeadline(START + 100);
         vm.warp(START + 101);
@@ -450,19 +442,26 @@ contract BountyBoardRevertTest is BountyBoardTestBase {
         bb.getSubmissions(0);
     }
 
-    // ---------------- documented griefing behaviour ----------------
+    // ---------------- spam-submission lock is now bounded ----------------
 
-    /// A single (even worthless) submission permanently blocks cancelBounty on a
-    /// no-deadline bounty unless the submitter voluntarily withdraws.
-    function test_Cancel_SpamSubmissionBlocksCancelOnNoDeadlineBounty() public {
+    /// A worthless submission blocks cancelBounty, but the creator can no longer be
+    /// locked out forever: after deadline + REVIEW_GRACE the escrow is reclaimable.
+    function test_Cancel_SpamSubmissionBlocksCancelButExpiryEventuallyRecovers() public {
         uint256 id = _create();
         _submit(stranger, id);
         vm.prank(creator);
         vm.expectRevert("Submissions exist");
         bb.cancelBounty(id);
-        // and claimExpiredBounty is unavailable without a deadline
+
+        vm.warp(DL + 1);
         vm.prank(creator);
-        vm.expectRevert("Bounty not expired");
+        vm.expectRevert("Review period not over");
         bb.claimExpiredBounty(id);
+
+        vm.warp(DL + bb.REVIEW_GRACE() + 1);
+        vm.prank(creator);
+        bb.claimExpiredBounty(id);
+        assertEq(_bal(creator), FUNDS);
+        assertEq(_bal(address(bb)), 0);
     }
 }

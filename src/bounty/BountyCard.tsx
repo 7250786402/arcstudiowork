@@ -6,7 +6,7 @@ import { CHAIN_ID, USDC_ADDRESS, usd } from '@/escrowTypes'
 import type { Addr } from '@/escrowTypes'
 import { parseAmount } from '@/onchain-money'
 import { BOUNTY_ABI } from '@/bountyAbi'
-import { CONTRACT_ADDRESS, fmtDeadline } from '@/bountyTypes'
+import { CONTRACT_ADDRESS, REVIEW_GRACE_SECONDS, fmtDeadline } from '@/bountyTypes'
 import type { Bounty, Submission } from '@/bountyTypes'
 import { c, display, glass } from '@/escrow/theme'
 import { AddressTag } from '@/ui/AddressAvatar'
@@ -51,6 +51,8 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
   const isOpen = bounty.status === 0
   const isClaimed = bounty.status === 1
   const expired = bounty.deadline > 0n && BigInt(now) > bounty.deadline
+  const graceEnds = bounty.deadline + REVIEW_GRACE_SECONDS
+  const canReclaim = subs.length === 0 || BigInt(now) > graceEnds
   const mySub = subs.find((s) => s.submitter.toLowerCase() === meL)
   const tags = bounty.tags ? bounty.tags.split(',').map((t) => t.trim()).filter(Boolean) : []
   const error = act.error || tip.error || tipApprove.error
@@ -185,7 +187,12 @@ export function BountyCard({ bounty, subs, me, onChanged }: { bounty: Bounty; su
           )}
           {!me && isOpen && !expired && <p className="text-xs" style={{ color: c.muted }}>Connect your wallet to submit work.</p>}
 
-          {isCreator && isOpen && (subs.length === 0 || expired) && (
+          {isCreator && isOpen && subs.length > 0 && expired && !canReclaim && (
+            <p className="text-xs text-pretty" style={{ color: c.muted }}>
+              The deadline has passed. You can still pick a winner until {new Date(Number(graceEnds) * 1000).toLocaleDateString()}. After that you can take your USDC back.
+            </p>
+          )}
+          {isCreator && isOpen && canReclaim && (
             <Btn kind="danger" onClick={() => call(subs.length === 0 ? 'cancelBounty' : 'claimExpiredBounty')} disabled={act.busy}>
               {act.busy ? <Spin>Working...</Spin> : subs.length === 0 ? 'Cancel and get my USDC back' : 'Deadline passed: take my USDC back'}
             </Btn>

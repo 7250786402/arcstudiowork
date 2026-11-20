@@ -2,10 +2,17 @@
 pragma solidity ^0.8.20;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract BountyBoard is Ownable, ReentrancyGuard {
+/// @title BountyBoard
+/// @dev All rewards are held in Arc USDC at this contract address. An issuer blocklist
+/// of this contract would freeze all payouts and refunds. approveClaimer deliberately
+/// reverts with "Winner address cannot receive USDC" on a failed payout so the creator
+/// can pick another submitter or reclaim after the deadline plus REVIEW_GRACE.
+/// Reputation counters are informational only.
+contract BountyBoard is Ownable2Step, ReentrancyGuard {
     IERC20 public immutable usdc;
 
     enum BountyStatus {
@@ -36,10 +43,12 @@ contract BountyBoard is Ownable, ReentrancyGuard {
     }
 
     address public constant USDC_ADDRESS = 0x3600000000000000000000000000000000000000;
+    uint256 public constant REVIEW_GRACE = 7 days;
 
     Bounty[] private _bounties;
     mapping(uint256 => Submission[]) private _submissions;
     mapping(uint256 => mapping(address => bool)) private _hasSubmitted;
+    mapping(uint256 => mapping(address => uint256)) private _submissionIndexPlusOne;
 
     mapping(address => uint256) public totalEarned;
     mapping(address => uint256) public bountiesWon;
@@ -65,6 +74,10 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         usdc = IERC20(USDC_ADDRESS);
     }
 
+    function renounceOwnership() public pure override {
+        revert("Renounce disabled");
+    }
+
     function setEmergencyMode(bool enabled) external onlyOwner {
         emergencyMode = enabled;
         emit EmergencyModeUpdated(enabled);
@@ -81,10 +94,10 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         uint256 estimatedHours
     ) external nonReentrant whenNotEmergency {
         require(reward > 0, "Reward must be > 0");
-        require(deadline == 0 || deadline > block.timestamp, "Invalid deadline");
+        require(deadline != 0, "Deadline required");
+        require(deadline > block.timestamp, "Invalid deadline");
+        require(deadline <= block.timestamp + 365 days, "Deadline too far");
         require(bountyType <= 2, "Invalid bounty type");
-        require(usdc.transferFrom(msg.sender, address(this), reward), "USDC transferFrom failed");
-
         uint256 bountyId = _bounties.length;
 
         _bounties.push(
@@ -107,6 +120,8 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         bountiesCreated[msg.sender] += 1;
 
         emit BountyCreated(bountyId, msg.sender, reward, title);
+
+        require(usdc.transferFrom(msg.sender, address(this), reward), "USDC transferFrom failed");
     }
 
     function submitWork(uint256 bountyId, string memory submissionNote) external whenNotEmergency {
@@ -114,13 +129,15 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         Bounty storage bounty = _bounties[bountyId];
 
         require(bounty.status == BountyStatus.Open, "Bounty not open");
-        require(bounty.deadline == 0 || block.timestamp <= bounty.deadline, "Bounty deadline passed");
+        require(msg.sender != bounty.creator, "Creator cannot submit");
+        require(block.timestamp <= bounty.deadline, "Bounty deadline passed");
         require(!_hasSubmitted[bountyId][msg.sender], "Already submitted");
 
         _hasSubmitted[bountyId][msg.sender] = true;
         _submissions[bountyId].push(
             Submission({submitter: msg.sender, submissionNote: submissionNote, timestamp: block.timestamp})
         );
+        _submissionIndexPlusOne[bountyId][msg.sender] = _submissions[bountyId].length;
 
         emit WorkSubmitted(bountyId, msg.sender, submissionNote);
     }
@@ -132,20 +149,18 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         require(_hasSubmitted[bountyId][msg.sender], "No submission found");
 
         Submission[] storage submissions = _submissions[bountyId];
-        uint256 length = submissions.length;
+        uint256 index = _submissionIndexPlusOne[bountyId][msg.sender] - 1;
+        uint256 lastIndex = submissions.length - 1;
 
-        for (uint256 i = 0; i < length; i++) {
-            if (submissions[i].submitter == msg.sender) {
-                submissions[i] = submissions[length - 1];
-                submissions.pop();
-                _hasSubmitted[bountyId][msg.sender] = false;
-
-                emit SubmissionWithdrawn(bountyId, msg.sender);
-                return;
-            }
+        if (index != lastIndex) {
+            submissions[index] = submissions[lastIndex];
+            _submissionIndexPlusOne[bountyId][submissions[index].submitter] = index + 1;
         }
+        submissions.pop();
+        delete _submissionIndexPlusOne[bountyId][msg.sender];
+        _hasSubmitted[bountyId][msg.sender] = false;
 
-        revert("No submission found");
+        emit SubmissionWithdrawn(bountyId, msg.sender);
     }
 
     function approveClaimer(uint256 bountyId, address claimer) external nonReentrant whenNotEmergency {
@@ -157,12 +172,7 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         require(claimer != address(0), "Claimer is zero");
         require(_hasSubmitted[bountyId][claimer], "Claimer has no submission");
 
-        try usdc.transfer(claimer, bounty.reward) returns (bool success) {
-            require(success, "Winner address cannot receive USDC");
-        } catch {
-            revert("Winner address cannot receive USDC");
-        }
-
+        // Effects first. A failed transfer reverts the whole call, so none of this persists.
         bounty.status = BountyStatus.Claimed;
         bounty.claimer = claimer;
 
@@ -170,6 +180,12 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         bountiesWon[claimer] += 1;
 
         emit BountyClaimed(bountyId, claimer, bounty.reward);
+
+        try usdc.transfer(claimer, bounty.reward) returns (bool success) {
+            require(success, "Winner address cannot receive USDC");
+        } catch {
+            revert("Winner address cannot receive USDC");
+        }
     }
 
     function tipWinner(uint256 bountyId, uint256 amount) external nonReentrant whenNotEmergency {
@@ -180,11 +196,11 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         require(bounty.status == BountyStatus.Claimed, "Bounty not claimed");
         require(bounty.claimer != address(0), "Winner not set");
 
-        require(usdc.transferFrom(msg.sender, bounty.claimer, amount), "USDC transferFrom failed");
-
         totalEarned[bounty.claimer] += amount;
 
         emit WinnerTipped(bountyId, msg.sender, bounty.claimer, amount);
+
+        require(usdc.transferFrom(msg.sender, bounty.claimer, amount), "USDC transferFrom failed");
     }
 
     function cancelBounty(uint256 bountyId) external nonReentrant whenNotEmergency {
@@ -197,9 +213,9 @@ contract BountyBoard is Ownable, ReentrancyGuard {
 
         bounty.status = BountyStatus.Cancelled;
 
-        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
-
         emit BountyCancelled(bountyId);
+
+        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
     }
 
     function claimExpiredBounty(uint256 bountyId) external nonReentrant {
@@ -207,14 +223,17 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         Bounty storage bounty = _bounties[bountyId];
 
         require(bounty.status == BountyStatus.Open, "Bounty not open");
-        require(bounty.deadline != 0 && block.timestamp > bounty.deadline, "Bounty not expired");
+        require(block.timestamp > bounty.deadline, "Bounty not expired");
         require(msg.sender == bounty.creator, "Not bounty creator");
+        if (_submissions[bountyId].length > 0) {
+            require(block.timestamp > bounty.deadline + REVIEW_GRACE, "Review period not over");
+        }
 
         bounty.status = BountyStatus.Cancelled;
 
-        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
-
         emit BountyCancelled(bountyId);
+
+        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
     }
 
     function emergencyRefund(uint256 bountyId) external onlyOwner nonReentrant {
@@ -225,9 +244,9 @@ contract BountyBoard is Ownable, ReentrancyGuard {
 
         bounty.status = BountyStatus.Cancelled;
 
-        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
-
         emit BountyCancelled(bountyId);
+
+        require(usdc.transfer(bounty.creator, bounty.reward), "USDC transfer failed");
     }
 
     function getBounty(uint256 id) external view returns (Bounty memory) {
@@ -244,6 +263,8 @@ contract BountyBoard is Ownable, ReentrancyGuard {
         return _submissions[bountyId];
     }
 
+    /// @notice Reputation counters are informational only.
+    /// @dev Counters can still be inflated using extra addresses (Sybil identities).
     function getReputation(address user) external view returns (uint256 earned, uint256 won, uint256 created) {
         return (totalEarned[user], bountiesWon[user], bountiesCreated[user]);
     }

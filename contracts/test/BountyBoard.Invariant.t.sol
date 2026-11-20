@@ -15,6 +15,20 @@ contract BountyBoardHandler is Test {
     uint256 public ghostPaidOut; // approveClaimer payouts
     uint256 public ghostRefunded; // cancels/expiries/emergency refunds
     uint256 public ghostDeposited;
+    /// Number of bounties created through the handler (the only creator), so we never copy getBounties().
+    uint256 public count;
+    /// Incrementally-synced view of on-chain state (read from the contract for each touched bounty only).
+    uint256 public openSum;
+    bool public claimerMismatch;
+    mapping(uint256 => uint256) internal _openContribution;
+
+    function _sync(uint256 id) internal {
+        BountyBoard.Bounty memory b = bb.getBounty(id);
+        uint256 now_ = b.status == BountyBoard.BountyStatus.Open ? b.reward : 0;
+        openSum = openSum - _openContribution[id] + now_;
+        _openContribution[id] = now_;
+        if ((b.claimer != address(0)) != (b.status == BountyBoard.BountyStatus.Claimed)) claimerMismatch = true;
+    }
 
     constructor(BountyBoard _bb, MockERC20 _usdc, address _owner, address[] memory _actors) {
         bb = _bb;
@@ -28,69 +42,99 @@ contract BountyBoardHandler is Test {
     }
 
     function _id(uint256 seed) internal view returns (uint256) {
-        uint256 n = bb.getBounties().length;
+        uint256 n = count;
         return n == 0 ? 0 : seed % n;
     }
 
     function create(uint256 actorSeed, uint256 reward, uint256 dlOffset, uint8 bType) external {
         reward = bound(reward, 1, 10_000e6);
-        dlOffset = bound(dlOffset, 0, 30 days);
-        uint256 dl = dlOffset == 0 ? 0 : block.timestamp + dlOffset;
+        dlOffset = bound(dlOffset, 1, 365 days);
+        uint256 dl = block.timestamp + dlOffset;
         bType = uint8(bound(bType, 0, 2));
         vm.prank(_actor(actorSeed));
         try bb.createBounty("t", "d", reward, "g", dl, "c", bType, 1) {
             ghostDeposited += reward;
+            count++;
+            _sync(count - 1);
         } catch {}
     }
 
+    bool public creatorSubmitted;
+
     function submit(uint256 actorSeed, uint256 idSeed) external {
-        vm.prank(_actor(actorSeed));
-        try bb.submitWork(_id(idSeed), "n") {} catch {}
+        if (count == 0) return;
+        uint256 id = _id(idSeed);
+        address who = _actor(actorSeed);
+        address c = bb.getBounty(id).creator;
+        vm.prank(who);
+        try bb.submitWork(id, "n") {
+            if (who == c) creatorSubmitted = true;
+        } catch {}
     }
 
+    bool public indexBroken;
+
     function withdraw(uint256 actorSeed, uint256 idSeed) external {
-        vm.prank(_actor(actorSeed));
-        try bb.withdrawSubmission(_id(idSeed)) {} catch {}
+        uint256 id = _id(idSeed);
+        address who = _actor(actorSeed);
+        if (count == 0) return;
+        BountyBoard.Submission[] memory before_ = bb.getSubmissions(id);
+        vm.prank(who);
+        try bb.withdrawSubmission(id) {
+            BountyBoard.Submission[] memory after_ = bb.getSubmissions(id);
+            if (after_.length + 1 != before_.length) indexBroken = true;
+            for (uint256 i = 0; i < before_.length; i++) {
+                uint256 count;
+                for (uint256 j = 0; j < after_.length; j++) {
+                    if (after_[j].submitter == before_[i].submitter) count++;
+                }
+                if (count != (before_[i].submitter == who ? 0 : 1)) indexBroken = true;
+            }
+        } catch {}
     }
 
     function approve(uint256 idSeed, uint256 claimerSeed) external {
         uint256 id = _id(idSeed);
-        if (bb.getBounties().length == 0) return;
+        if (count == 0) return;
         BountyBoard.Bounty memory b = bb.getBounty(id);
         vm.prank(b.creator);
         try bb.approveClaimer(id, _actor(claimerSeed)) {
             ghostPaidOut += b.reward;
+            _sync(id);
         } catch {}
     }
 
     function cancel(uint256 idSeed) external {
         uint256 id = _id(idSeed);
-        if (bb.getBounties().length == 0) return;
+        if (count == 0) return;
         BountyBoard.Bounty memory b = bb.getBounty(id);
         vm.prank(b.creator);
         try bb.cancelBounty(id) {
             ghostRefunded += b.reward;
+            _sync(id);
         } catch {}
     }
 
     function expire(uint256 idSeed) external {
         uint256 id = _id(idSeed);
-        if (bb.getBounties().length == 0) return;
+        if (count == 0) return;
         BountyBoard.Bounty memory b = bb.getBounty(id);
         vm.prank(b.creator);
         try bb.claimExpiredBounty(id) {
             ghostRefunded += b.reward;
+            _sync(id);
         } catch {}
     }
 
     function emergencyRefund(uint256 idSeed) external {
         uint256 id = _id(idSeed);
-        if (bb.getBounties().length == 0) return;
+        if (count == 0) return;
         BountyBoard.Bounty memory b = bb.getBounty(id);
         vm.startPrank(owner);
         bb.setEmergencyMode(true);
         try bb.emergencyRefund(id) {
             ghostRefunded += b.reward;
+            _sync(id);
         } catch {}
         bb.setEmergencyMode(false);
         vm.stopPrank();
@@ -123,12 +167,7 @@ contract BountyBoardInvariantTest is BountyBoardTestBase {
 
     /// Contract USDC balance == sum of rewards of Open bounties.
     function invariant_BalanceEqualsSumOfOpenRewards() public view {
-        BountyBoard.Bounty[] memory all = bb.getBounties();
-        uint256 sum;
-        for (uint256 i = 0; i < all.length; i++) {
-            if (all[i].status == BountyBoard.BountyStatus.Open) sum += all[i].reward;
-        }
-        assertEq(_bal(address(bb)), sum);
+        assertEq(_bal(address(bb)), handler.openSum());
     }
 
     /// Money conservation: deposited == paid out + refunded + still escrowed.
@@ -138,17 +177,23 @@ contract BountyBoardInvariantTest is BountyBoardTestBase {
 
     /// Claimed bounties always have a claimer; others never do.
     function invariant_ClaimerSetIffClaimed() public view {
-        BountyBoard.Bounty[] memory all = bb.getBounties();
-        for (uint256 i = 0; i < all.length; i++) {
-            bool claimed = all[i].status == BountyBoard.BountyStatus.Claimed;
-            assertEq(all[i].claimer != address(0), claimed);
-        }
+        assertFalse(handler.claimerMismatch());
     }
 
     /// bountiesCreated summed over actors equals the number of bounties.
     function invariant_CreatedCountMatchesBountyCount() public view {
         uint256 total = bb.bountiesCreated(creator) + bb.bountiesCreated(alice) + bb.bountiesCreated(bob)
             + bb.bountiesCreated(carol);
-        assertEq(total, bb.getBounties().length);
+        assertEq(total, handler.count());
+    }
+
+    /// O(1) withdraw index map: every successful withdraw removed exactly the caller and kept all others.
+    function invariant_WithdrawIndexMapConsistent() public view {
+        assertFalse(handler.indexBroken());
+    }
+
+    /// The creator never manages to submit to their own bounty.
+    function invariant_CreatorNeverSubmits() public view {
+        assertFalse(handler.creatorSubmitted());
     }
 }

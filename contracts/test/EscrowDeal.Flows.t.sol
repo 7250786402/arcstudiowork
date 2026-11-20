@@ -49,6 +49,8 @@ contract EscrowDealFlowsTest is EscrowDealTestBase {
 
     function test_AcceptDeal_SetsPayoutAndStatus() public {
         uint256 id = _create(arbiter, WINDOW);
+        vm.expectEmit(true, true, false, true, address(escrow));
+        emit EscrowDeal.Accepted(id, seller, payout);
         vm.prank(seller);
         escrow.acceptDeal(id, payout);
         EscrowDeal.Deal memory d = escrow.getDeal(id);
@@ -123,6 +125,12 @@ contract EscrowDealFlowsTest is EscrowDealTestBase {
         vm.prank(seller);
         escrow.refund(id);
         assertEq(uint8(_status(id)), uint8(EscrowDeal.Status.Refunded));
+        // seller-initiated refund only credits; funds stay in escrow until withdrawBuyer
+        assertEq(escrow.buyerOwed(id), AMOUNT);
+        assertEq(_bal(buyer), before_);
+        assertEq(_bal(address(escrow)), AMOUNT);
+
+        escrow.withdrawBuyer(id);
         assertEq(_bal(buyer), before_ + AMOUNT);
         assertEq(_bal(address(escrow)), 0);
     }
@@ -132,6 +140,9 @@ contract EscrowDealFlowsTest is EscrowDealTestBase {
         uint256 before_ = _bal(buyer);
         vm.prank(seller);
         escrow.refund(id);
+        assertEq(_bal(buyer), before_);
+        assertEq(escrow.buyerOwed(id), AMOUNT);
+        escrow.withdrawBuyer(id);
         assertEq(_bal(buyer), before_ + AMOUNT);
         assertEq(_bal(address(escrow)), 0);
     }

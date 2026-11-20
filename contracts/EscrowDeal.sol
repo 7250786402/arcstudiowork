@@ -8,6 +8,11 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 /// @title EscrowDeal
 /// @notice USDC deal escrow for Arc Testnet (chain ID 5042002), with no admin role.
 /// @dev Amounts are in USDC base units. Buyers must approve this contract before creating a deal.
+/// All deals share this contract address and depend on the USDC issuer's blocklist:
+/// blocklisting this contract would freeze payouts and refunds for every deal.
+/// Seller-initiated refunds credit the buyer for later withdrawal so a blocklisted buyer
+/// cannot block the seller's settlement. Buyer-triggered refunds stay direct because
+/// the buyer is the caller and a failed receipt does not block the seller's own action.
 contract EscrowDeal is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -45,15 +50,19 @@ contract EscrowDeal is ReentrancyGuard {
     mapping(address => uint256[]) private _userDeals;
     mapping(uint256 => mapping(address => uint256)) private claimable;
     mapping(uint256 => uint256) public sellerOwed;
+    mapping(uint256 => uint256) public buyerOwed;
 
     event DealCreated(uint256 indexed id, address indexed buyer, address indexed seller, uint256 amount);
     event Delivered(uint256 indexed id);
     event Released(uint256 indexed id, address indexed seller, uint256 amount);
     event SellerWithdrawn(uint256 indexed id, address indexed payout, uint256 amount);
     event Refunded(uint256 indexed id, address indexed buyer, uint256 amount);
+    event BuyerWithdrawn(uint256 indexed id, address indexed buyer, uint256 amount);
     event DisputeRaised(uint256 indexed id);
     event DisputeResolved(uint256 indexed id, uint256 toSeller, uint256 toBuyer);
     event PayoutUpdated(uint256 indexed id, address newPayout);
+    event Accepted(uint256 indexed id, address indexed seller, address payout);
+    event ResolvedClaimed(uint256 indexed id, address indexed beneficiary, uint256 amount);
 
     /// @notice Create a funded deal with at least one bounded settlement path.
     /// @dev Requires a nonzero arbiter or a nonzero review window (or both).
@@ -111,6 +120,7 @@ contract EscrowDeal is ReentrancyGuard {
 
         deal.sellerPayout = payout;
         deal.status = Status.Accepted;
+        emit Accepted(id, deal.seller, payout);
     }
 
     function updatePayout(uint256 id, address newPayout) external nonReentrant {
@@ -133,6 +143,7 @@ contract EscrowDeal is ReentrancyGuard {
 
         deal.status = Status.Refunded;
         emit Refunded(id, deal.buyer, deal.amount);
+        // Direct refund is intentional: the buyer is the caller.
         usdc.safeTransfer(deal.buyer, deal.amount);
     }
 
@@ -165,8 +176,8 @@ contract EscrowDeal is ReentrancyGuard {
         uint256 amount = sellerOwed[id];
         require(amount > 0, "Nothing to claim");
         sellerOwed[id] = 0;
-        usdc.safeTransfer(deal.sellerPayout, amount);
         emit SellerWithdrawn(id, deal.sellerPayout, amount);
+        usdc.safeTransfer(deal.sellerPayout, amount);
     }
 
     function refund(uint256 id) external nonReentrant {
@@ -174,9 +185,22 @@ contract EscrowDeal is ReentrancyGuard {
         require(msg.sender == deal.seller, "Not seller");
         require(deal.status == Status.Accepted || deal.status == Status.Delivered, "Invalid status");
 
+        require(buyerOwed[id] == 0, "Buyer already credited");
         deal.status = Status.Refunded;
+        buyerOwed[id] = deal.amount;
         emit Refunded(id, deal.buyer, deal.amount);
-        usdc.safeTransfer(deal.buyer, deal.amount);
+    }
+
+    /// @notice Anyone may withdraw a credited refund to the original buyer.
+    function withdrawBuyer(uint256 id) external nonReentrant {
+        Deal storage deal = _getDeal(id);
+        require(deal.status == Status.Refunded, "Invalid status");
+
+        uint256 amount = buyerOwed[id];
+        require(amount > 0, "Nothing to claim");
+        buyerOwed[id] = 0;
+        emit BuyerWithdrawn(id, deal.buyer, amount);
+        usdc.safeTransfer(deal.buyer, amount);
     }
 
     function reclaimExpired(uint256 id) external nonReentrant {
@@ -187,6 +211,7 @@ contract EscrowDeal is ReentrancyGuard {
 
         deal.status = Status.Refunded;
         emit Refunded(id, deal.buyer, deal.amount);
+        // Direct refund is intentional: the buyer is the caller.
         usdc.safeTransfer(deal.buyer, deal.amount);
     }
 
@@ -250,6 +275,7 @@ contract EscrowDeal is ReentrancyGuard {
         require(amount > 0, "Nothing to claim");
         claimable[id][beneficiary] = 0;
         address payout = beneficiary == deal.seller ? deal.sellerPayout : deal.buyer;
+        emit ResolvedClaimed(id, beneficiary, amount);
         usdc.safeTransfer(payout, amount);
     }
 
@@ -262,6 +288,7 @@ contract EscrowDeal is ReentrancyGuard {
 
         deal.status = Status.Refunded;
         emit Refunded(id, deal.buyer, deal.amount);
+        // Direct refund is intentional: the buyer is the caller.
         usdc.safeTransfer(deal.buyer, deal.amount);
     }
 

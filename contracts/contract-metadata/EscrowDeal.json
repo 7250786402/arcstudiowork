@@ -1,13 +1,20 @@
 {
-  "contractAddress": "0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58",
+  "contractAddress": "0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c",
   "network": "ARC-TESTNET",
   "deployerWalletId": "3c2464b2-8369-52e2-a782-800bbeca5396",
   "contract_code_path": "/home/user/app/contracts/EscrowDeal.sol",
   "contract_compiled_code_path": "/home/user/app/contracts/out/EscrowDeal.sol/EscrowDeal.json",
   "contract_network_and_links": {
-    "Arc Testnet": "https://explorer.testnet.arc.io/address/0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58"
+    "Arc Testnet": "https://explorer.testnet.arc.io/address/0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c"
   },
   "contract_deployments": [
+    {
+      "chain": "Arc Testnet",
+      "address": "0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c",
+      "txHash": "0x5f010faf1f47e45f9c0f5002262fddf28da0c901d8572616ba96e2c71631b337",
+      "deployedAt": "2026-11-20T10:11:41.834Z"
+    },
     {
       "chain": "Arc Testnet",
       "address": "0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58",
@@ -60,6 +67,25 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "buyerOwed",
+      "inputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
     },
     {
       "type": "function",
@@ -457,6 +483,19 @@
     },
     {
       "type": "function",
+      "name": "withdrawBuyer",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "withdrawSeller",
       "inputs": [
         {
@@ -467,6 +506,56 @@
       ],
       "outputs": [],
       "stateMutability": "nonpayable"
+    },
+    {
+      "type": "event",
+      "name": "Accepted",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "seller",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "payout",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "BuyerWithdrawn",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "buyer",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
     },
     {
       "type": "event",
@@ -606,6 +695,31 @@
         },
         {
           "name": "seller",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "ResolvedClaimed",
+      "inputs": [
+        {
+          "name": "id",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "beneficiary",
           "type": "address",
           "indexed": true,
           "internalType": "address"

@@ -8,8 +8,8 @@ contract BountyBoardFuzzTest is BountyBoardTestBase {
     function testFuzz_Create_EscrowsExactReward(uint256 reward, uint8 bType, uint256 dlOffset) public {
         reward = bound(reward, 1, FUNDS);
         bType = uint8(bound(bType, 0, 2));
-        dlOffset = bound(dlOffset, 0, 3650 days);
-        uint256 dl = dlOffset == 0 ? 0 : START + dlOffset;
+        dlOffset = bound(dlOffset, 1, 365 days);
+        uint256 dl = START + dlOffset;
 
         uint256 id = _createWith(reward, dl, bType);
 
@@ -23,7 +23,7 @@ contract BountyBoardFuzzTest is BountyBoardTestBase {
         bType = uint8(bound(bType, 3, 255));
         vm.prank(creator);
         vm.expectRevert("Invalid bounty type");
-        bb.createBounty("t", "d", 1, "", 0, "", bType, 0);
+        bb.createBounty("t", "d", 1, "", DL, "", bType, 0);
     }
 
     function testFuzz_Create_PastOrNowDeadlineReverts(uint256 dl) public {
@@ -35,7 +35,7 @@ contract BountyBoardFuzzTest is BountyBoardTestBase {
 
     function testFuzz_Approve_PayoutEqualsReward(uint256 reward) public {
         reward = bound(reward, 1, FUNDS);
-        uint256 id = _createWith(reward, 0, 0);
+        uint256 id = _createWith(reward, DL, 0);
         _submit(alice, id);
         uint256 before = _bal(alice);
         _approve(id, alice);
@@ -48,7 +48,7 @@ contract BountyBoardFuzzTest is BountyBoardTestBase {
 
     function testFuzz_Cancel_RefundsExactReward(uint256 reward) public {
         reward = bound(reward, 1, FUNDS);
-        uint256 id = _createWith(reward, 0, 0);
+        uint256 id = _createWith(reward, DL, 0);
         vm.prank(creator);
         bb.cancelBounty(id);
         assertEq(_bal(creator), FUNDS);
@@ -93,7 +93,7 @@ contract BountyBoardFuzzTest is BountyBoardTestBase {
     function testFuzz_Tip_AddsExactAmount(uint256 reward, uint256 tip) public {
         reward = bound(reward, 1, FUNDS);
         tip = bound(tip, 1, FUNDS);
-        uint256 id = _createWith(reward, 0, 0);
+        uint256 id = _createWith(reward, DL, 0);
         _submit(alice, id);
         _approve(id, alice);
 

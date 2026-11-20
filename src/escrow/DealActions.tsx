@@ -14,7 +14,7 @@ import { AddressTag } from '@/ui/AddressAvatar'
 
 type IdFn =
   | 'release' | 'refund' | 'cancelUnaccepted' | 'reclaimExpired' | 'claimAfterReviewWindow'
-  | 'raiseDispute' | 'refundStaleDispute' | 'markDelivered' | 'withdrawSeller'
+  | 'raiseDispute' | 'refundStaleDispute' | 'markDelivered' | 'withdrawSeller' | 'withdrawBuyer'
 
 function Btn({ children, onClick, disabled, tone = 'primary' }: { children: ReactNode; onClick: () => void; disabled: boolean; tone?: 'primary' | 'success' | 'ghost' | 'danger' }) {
   return <Button block variant={tone} onClick={onClick} disabled={disabled}>{children}</Button>
@@ -43,6 +43,10 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
   const { data: owed } = useReadContract({
     address: ESCROW_ADDRESS, abi: ESCROW_ABI, functionName: 'sellerOwed', args: [deal.id], chainId: CHAIN_ID,
     query: { enabled: deal.status === STATUS.Released },
+  })
+  const { data: refundOwed } = useReadContract({
+    address: ESCROW_ADDRESS, abi: ESCROW_ABI, functionName: 'buyerOwed', args: [deal.id], chainId: CHAIN_ID,
+    query: { enabled: deal.status === STATUS.Refunded },
   })
   const resolved = deal.status === STATUS.Resolved
   const { data: buyerOwed } = useReadContract({
@@ -155,7 +159,10 @@ export function DealActions({ deal, me, now, onChanged }: { deal: Deal; me?: Add
     if ((buyerOwed ?? 0n) === 0n && (sellerOwedResolved ?? 0n) === 0n) items.push(<Note key="d">The arbiter's decision has been paid out.</Note>)
   }
 
-  if (s === STATUS.Refunded) items.push(<Note key="rf">The USDC was returned to the buyer.</Note>)
+  if (s === STATUS.Refunded) {
+    if ((refundOwed ?? 0n) > 0n) items.push(<Btn key="rb" tone="success" disabled={busy} onClick={() => idCall('withdrawBuyer')}>{label(`Send ${usd(refundOwed ?? 0n)} USDC to buyer`)}</Btn>)
+    else items.push(<Note key="rf">The USDC was returned to the buyer.</Note>)
+  }
   if (confirm) {
     const toSeller = confirm === 'release'
     const recipient = toSeller ? (deal.sellerPayout !== ZERO ? deal.sellerPayout : deal.seller) : deal.buyer

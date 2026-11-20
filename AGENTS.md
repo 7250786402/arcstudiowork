@@ -44,10 +44,10 @@ A simple USDC Tip Jar app on Arc Testnet. Users connect their wallet and send US
 
 ## Current app: Escrow (USDC escrow between buyer and seller)
 
-- Contract: `contracts/EscrowDeal.sol`, deployed on Arc Testnet at `0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58` (also in `.env` as `VITE_ESCROW_ADDRESS`).
+- Contract: `contracts/EscrowDeal.sol`, deployed on Arc Testnet at `0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c` (also in `.env` as `VITE_ESCROW_ADDRESS`).
 - Every deal needs an arbiter or an auto-release window. The seller names a payout address on accept and can update it. Seller payouts are pull-based.
 - UI: `src/App.tsx` (shell), `src/escrow/` (NewDealForm, DealCard, DealActions, useTxFlow, theme), `src/escrowTypes.ts`, `src/escrowAbi.ts`.
-- Earlier contracts still deployed: USDCRaffle, PredictionGame, BountyBoard (`0x8de137da25631defc4c990b46042daa8ba859fa3`). Their ABIs and types remain in `src/` (raffleAbi, predictionAbi, bountyAbi, bountyTypes). Raffle and Prediction Game UIs were replaced by later apps and are not in the project.
+- Earlier contracts still deployed: USDCRaffle, PredictionGame, BountyBoard (`0x529d7675ad15d92a236a52f86298c3b0b845d02e`). Their ABIs and types remain in `src/` (raffleAbi, predictionAbi, bountyAbi, bountyTypes). Raffle and Prediction Game UIs were replaced by later apps and are not in the project.
 
 ## Three apps on one site
 

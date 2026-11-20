@@ -33,7 +33,7 @@ Import ke baad ek "Configure Project" page khulega. Ye teen cheezein badlo:
 
 | Name | Value |
 |---|---|
-| `VITE_ESCROW_ADDRESS` | `0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58` |
+| `VITE_ESCROW_ADDRESS` | `0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c` |
 | `VITE_CROWDFUND_ADDRESS` | `0x008a328ad702578c39d00517efa8b8abe6d05b39` |
 
 Har ek ke liye Name aur Value bharo, phir **Add** dabao. (Ye public contract addresses hain, koi secret nahi.)

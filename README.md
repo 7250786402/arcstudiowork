@@ -8,7 +8,7 @@ Built with [Arc Studio](https://studio.arc.io)
 
 The site holds three apps, with a switch at the top:
 
-- **Bounty Board:** post a task with a USDC reward, people submit work, and you pick the winner who gets paid. Filter by skill, search, and sort by reward. If a bounty has a deadline you can take your USDC back after it passes.
+- **Bounty Board:** post a task with a USDC reward, people submit work, and you pick the winner who gets paid. Filter by skill, search, and sort by reward. Every bounty has a deadline. If nobody is picked, the poster can take the USDC back after it (7 days after it if work was submitted). The poster cannot submit to their own bounty.
 - **Escrow:** a buyer locks USDC for a deal, the seller accepts the terms, and the money is released only when both sides are satisfied. If they disagree or go quiet, an arbiter or an agreed auto-release time settles it, so funds never stay stuck. Open it directly with `?app=escrow`.
 - **Crowdfund:** start a campaign with a USDC goal and a deadline. Backers pledge USDC. If the goal is reached, the money goes to the campaign wallet; if not, every backer can take their USDC back. Open it directly with `?app=crowdfund`.
 

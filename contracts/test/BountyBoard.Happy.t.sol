@@ -57,9 +57,9 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
         assertEq(bb.bountiesCreated(creator), 2);
     }
 
-    function test_CreateBounty_AllowsTypesZeroOneTwoAndNoDeadline() public {
+    function test_CreateBounty_AllowsTypesZeroOneTwo() public {
         for (uint8 t = 0; t <= 2; t++) {
-            uint256 id = _createWith(1, 0, t);
+            uint256 id = _createWith(1, DL, t);
             assertEq(bb.getBounty(id).bountyType, t);
         }
     }
@@ -96,13 +96,6 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
         _submit(alice, id);
         _submit(bob, id);
         assertEq(_subs(id).length, 2);
-    }
-
-    function test_SubmitWork_CreatorMaySubmitToOwnBounty() public {
-        // documents behaviour (see suspected bugs): no creator != submitter check
-        uint256 id = _create();
-        _submit(creator, id);
-        assertEq(_subs(id).length, 1);
     }
 
     // ---------------- withdrawSubmission ----------------
@@ -232,8 +225,8 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
         assertEq(bb.bountiesWon(alice), 0);
     }
 
-    function test_Approve_AtExactDeadlineStillWorks() public {
-        // approveClaimer has no deadline check
+    function test_Approve_AfterDeadlineStillWorks() public {
+        // approveClaimer has no deadline check (creator may still review after the deadline)
         uint256 id = _createWithDeadline(START + 50);
         _submit(alice, id);
         vm.warp(START + 500);
@@ -302,10 +295,10 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
         assertEq(_bal(address(bb)), 0);
     }
 
-    function test_ClaimExpired_WorksEvenWithSubmissions() public {
+    function test_ClaimExpired_WithSubmissionsWorksAfterGrace() public {
         uint256 id = _createWithDeadline(START + 100);
         _submit(alice, id);
-        vm.warp(START + 101);
+        vm.warp(START + 100 + 7 days + 1);
         vm.prank(creator);
         bb.claimExpiredBounty(id);
         assertEq(_bal(creator), FUNDS);
@@ -362,7 +355,7 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
 
         vm.startPrank(creator);
         vm.expectRevert("Emergency mode active");
-        bb.createBounty("t", "d", 1, "", 0, "", 0, 0);
+        bb.createBounty("t", "d", 1, "", DL, "", 0, 0);
         vm.expectRevert("Emergency mode active");
         bb.approveClaimer(openId, alice);
         vm.expectRevert("Emergency mode active");
@@ -385,7 +378,7 @@ contract BountyBoardHappyTest is BountyBoardTestBase {
 
     function test_GetReputation_AggregatesAcrossBounties() public {
         uint256 a = _create();
-        uint256 b = _createWith(200e6, 0, 1);
+        uint256 b = _createWith(200e6, DL, 1);
         _submit(alice, a);
         _submit(alice, b);
         _approve(a, alice);

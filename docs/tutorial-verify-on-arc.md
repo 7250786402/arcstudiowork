@@ -70,8 +70,8 @@ These are what I expect to matter, based on how verification works. I only hit t
 Anyone can now read the source for the address they are about to send USDC to. For a contract that holds funds, that is worth the two minutes.
 
 My three verified contracts (Arc Testnet):
-- Bounty Board: https://explorer.testnet.arc.io/address/0x8de137da25631defc4c990b46042daa8ba859fa3
-- Escrow: https://explorer.testnet.arc.io/address/0xf22ec72e96a6c71c32b44740f8cc182cc6d2ed58
+- Bounty Board: https://explorer.testnet.arc.io/address/0x529d7675ad15d92a236a52f86298c3b0b845d02e
+- Escrow: https://explorer.testnet.arc.io/address/0x3addc8c4e5ca5f7e98a61ebc3c7232ef09cb3b6c
 - Crowdfund: https://explorer.testnet.arc.io/address/0x008a328ad702578c39d00517efa8b8abe6d05b39
 
 Code and tests: https://github.com/7250786402/arcstudiowork

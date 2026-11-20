@@ -18,7 +18,7 @@ const DEADLINES = [
   { label: '1 week', days: 7 },
   { label: '2 weeks', days: 14 },
   { label: '1 month', days: 30 },
-  { label: 'No deadline', days: 0 },
+  { label: '3 months', days: 90 },
 ]
 
 const TEMPLATES = [
@@ -77,7 +77,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
   }
   const doCreate = () => {
     if (rewardRaw === null) return
-    const deadline = days === 0 ? 0n : BigInt(Math.floor(Date.now() / 1000) + days * 86400)
+    const deadline = BigInt(Math.floor(Date.now() / 1000) + days * 86400)
     void create.run((w) => w({
       address: CONTRACT_ADDRESS, abi: BOUNTY_ABI, functionName: 'createBounty', chainId: CHAIN_ID,
       args: [title.trim(), desc.trim(), rewardRaw, tags.join(','), deadline, criteria.trim(), 0, BigInt(parseInt(hours || '0', 10) || 0)],
@@ -138,7 +138,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
         </div>
       </Field>
 
-      <Field label="Deadline" hint={days === 0 ? 'Without a deadline, your USDC stays locked once someone submits, until you pick a winner.' : 'After the deadline you can take your USDC back if you have not picked a winner.'}>
+      <Field label="Deadline" hint="Every bounty has a deadline. If work was submitted, you get 7 more days after it to pick a winner, then you can take your USDC back.">
         <div className="flex flex-wrap gap-1.5">
           {DEADLINES.map((d) => (
             <button key={d.label} type="button" aria-pressed={days === d.days} onClick={() => setDays(d.days)} className="btn min-h-11 rounded-xl px-3 text-xs font-semibold"
@@ -158,7 +158,7 @@ export function PostBountyForm({ onCreated }: { onCreated: () => void }) {
 
       {isConnected && (
         <ActionNote
-          summary={<>lock <Strong>{reward || '0'} USDC</Strong> as the reward. It is paid to the winner you pick.{' '}{days > 0 ? 'If you pick nobody by the deadline, you can take it back.' : 'With no deadline, it stays locked once someone submits, until you pick a winner.'}</>}
+          summary={<>lock <Strong>{reward || '0'} USDC</Strong> as the reward. It is paid to the winner you pick.{' '}If nobody is picked, you can take it back after the deadline (with submissions, 7 days after it).</>}
           missing={[title.trim() === '' && 'a title', desc.trim() === '' && 'a description', criteria.trim() === '' && 'what counts as done', (rewardRaw === null || rewardRaw === 0n) && 'a reward', rewardRaw !== null && balance !== undefined && !enough && 'enough USDC'].filter((m): m is string => typeof m === 'string')}
         />
       )}

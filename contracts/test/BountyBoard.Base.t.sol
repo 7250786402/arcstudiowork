@@ -22,6 +22,8 @@ abstract contract BountyBoardTestBase is Test {
     uint256 internal constant START = 1_700_000_000;
     uint256 internal constant REWARD = 500e6;
     uint256 internal constant FUNDS = 1_000_000e6;
+    /// Default (mandatory) deadline used by _create().
+    uint256 internal constant DL = START + 30 days;
 
     event BountyCreated(uint256 id, address creator, uint256 reward, string title);
     event WorkSubmitted(uint256 bountyId, address submitter, string note);
@@ -50,7 +52,7 @@ abstract contract BountyBoardTestBase is Test {
     // ---- helpers -------------------------------------------------------
 
     function _create() internal returns (uint256 id) {
-        return _createWith(REWARD, 0, 0);
+        return _createWith(REWARD, DL, 0);
     }
 
     function _createWith(uint256 reward, uint256 deadline, uint8 bType) internal returns (uint256 id) {
@@ -73,7 +75,7 @@ abstract contract BountyBoardTestBase is Test {
         bb.approveClaimer(id, claimer);
     }
 
-    /// Open bounty with no deadline, alice approved => Claimed.
+    /// Open bounty with the default deadline, alice approved => Claimed.
     function _createClaimed() internal returns (uint256 id) {
         id = _create();
         _submit(alice, id);
